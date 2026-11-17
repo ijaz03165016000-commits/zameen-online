@@ -1,5 +1,5 @@
-import { requireUser, $, $$, esc, formatPrice, timeAgo, toast, modal, cityOptions, typeLabel, coverImg, hydrateThumbs, waLink } from "../app.js";
-import * as db from "../db.js";
+import { requireUser, $, $$, esc, formatPrice, timeAgo, toast, modal, cityOptions, typeLabel, coverImg, hydrateThumbs, waLink } from "../app.js?v=20261117_06";
+import * as db from "../db.js?v=20261117_06";
 import { SERVICE_CATEGORIES, PACKAGES, CITIES } from "../seed.js";
 
 const me = await requireUser(["super_admin", "admin", "district_admin"]);
@@ -632,8 +632,12 @@ if (me) {
       };
 
       try {
-        await db.adminCreateAccount(data);
-        toast(`Account created successfully for ${data.name}!`);
+        const res = await db.adminCreateAccount(data);
+        if (res && res.isExisting) {
+          toast(`Updated existing account with Dealer profile: ${data.agencyName || data.name}!`);
+        } else {
+          toast(`Account created successfully for ${data.name}!`);
+        }
         m.remove();
         await refresh();
       } catch (err) {
