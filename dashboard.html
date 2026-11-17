@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Dashboard | Zameen Online</title>
+  <title>User &amp; Dealer Dashboard | Zameen Online</title>
   <meta name="theme-color" content="#1a3f8f">
   <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,16 +13,28 @@
 <div id="site-header"></div>
 <main>
   <section class="page-hero">
-    <div class="container"><h1 id="hello">My Dashboard</h1><p id="sub">Manage your ads, messages and profile</p></div>
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+        <div>
+          <h1 id="hello">My Dashboard</h1>
+          <p id="sub">Manage your property ads, buyer messages and agency settings</p>
+        </div>
+        <div id="user-badge-slot"></div>
+      </div>
+    </div>
   </section>
+
   <div class="container dash">
-    <nav class="dash-nav" id="tabs">
-      <button data-tab="ads" class="active">My Ads</button>
-      <button data-tab="inbox">Messages <span class="count hidden" id="unread"></span></button>
-      <button data-tab="favs">Saved</button>
-      <button data-tab="profile">Profile</button>
-      <button id="logout">Sign Out</button>
-    </nav>
+    <aside>
+      <nav class="dash-nav" id="tabs">
+        <button data-tab="ads" class="active">My Properties</button>
+        <button data-tab="inbox">Buyer Leads <span class="count hidden" id="unread"></span></button>
+        <button data-tab="agency" id="tab-agency-btn" style="display:none">🏢 Agency Profile</button>
+        <button data-tab="favs">Saved Properties</button>
+        <button data-tab="profile">Account &amp; Security</button>
+        <button id="logout">Sign Out</button>
+      </nav>
+    </aside>
     <section id="panel"></section>
   </div>
 </main>
