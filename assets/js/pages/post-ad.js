@@ -1,5 +1,6 @@
 import { requireUser, $, $$, esc, cityOptions, typeOptions, formatPrice, compressImage, toast } from "../app.js";
-import { createListing, updateListing, getListing, getPhotos, LIVE } from "../db.js";
+import { createListing, updateListing, getListing, getPhotos, getMyListings, LIVE } from "../db.js";
+import { PACKAGES } from "../seed.js";
 
 // Make a smaller copy of an image data URL (used for the thumbnail)
 const shrink = (src, max, q) => new Promise((res, rej) => {
@@ -62,6 +63,22 @@ if (u) {
   }
 
   const msg = (t, ok) => { form.querySelector(".msg").innerHTML = t ? `<div class="alert ${ok ? "alert-ok" : "alert-error"}">${t}</div>` : ""; if (t) form.scrollIntoView({ behavior: "smooth" }); };
+
+  // Check quota limit for new property submissions
+  if (!editId) {
+    const plan = PACKAGES.find(p => p.name === (u.plan || "Basic")) || PACKAGES[0];
+    const maxAds = ["super_admin", "admin"].includes(u.role) ? 99999 : (plan.ads || 1);
+    getMyListings(u.uid).then(ads => {
+      if (ads.length >= maxAds) {
+        msg(`<b>⚠️ Ad Quota Reached (${ads.length}/${maxAds} Used):</b> You have reached your limit of ${maxAds} property ad(s) on the <b>${esc(plan.name)}</b> plan. <a href="packages.html" style="color:var(--primary);font-weight:700;text-decoration:underline">Upgrade your package to post more properties →</a>`);
+        const submitBtn = $("#submit");
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Quota Full — Upgrade Package";
+        }
+      }
+    }).catch(console.error);
+  }
 
   form.onsubmit = async e => {
     e.preventDefault();

@@ -90,10 +90,10 @@ export const SEED_SERVICES = [
 ].map((s, i) => ({ ...s, id: "svc-" + (i + 1), phone: "+92 344 0807888", whatsapp: "923440807888", createdAt: now - i * day }));
 
 export const PACKAGES = [
-  { name: "Basic", price: 0, per: "Free forever", ads: 3, features: ["3 active property ads", "30 days ad validity", "WhatsApp & call leads", "Basic support"] },
-  { name: "Gold", price: 5000, per: "per month", ads: 50, features: ["50 active property ads", "5 featured ads", "Dealer profile page", "Verified dealer badge", "Email support"] },
-  { name: "Platinum", price: 15000, per: "per month", ads: 250, popular: true, features: ["250 active property ads", "25 featured ads", "Priority listing placement", "Verified dealer badge", "Leads dashboard", "Phone support"] },
-  { name: "Elite", price: 35000, per: "per month", ads: 800, features: ["800+ property ads", "100 featured ads", "Top of search results", "Verified dealer badge", "Dedicated account manager", "Social media promotion"] }
+  { name: "Basic", price: 0, per: "Free forever", ads: 1, features: ["1 active property ad", "30 days ad validity", "WhatsApp & call leads", "Basic support"] },
+  { name: "Gold", price: 5000, per: "per month", ads: 10, features: ["10 active property ads", "1 featured ad", "Dealer profile page", "Verified dealer badge", "Email support"] },
+  { name: "Platinum", price: 15000, per: "per month", ads: 100, popular: true, features: ["100 active property ads", "15 featured ads", "Priority listing placement", "Verified dealer badge", "Leads dashboard", "Phone support"] },
+  { name: "Elite", price: 35000, per: "per month", ads: 250, features: ["250 active property ads", "40 featured ads", "Top of search results", "Verified dealer badge", "Dedicated account manager", "Social media promotion"] }
 ];
 
 export const CITIES = {
