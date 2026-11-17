@@ -255,7 +255,10 @@ if (me) {
       return `
         <div class="results-bar">
           <h2>${esc(title)} (${D.length})</h2>
-          <button class="btn btn-accent" data-act="edit-dealer">+ Add Dealer</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="btn-add-dealer-acc">+ Create Dealer Account</button>
+            <button class="btn btn-outline" data-act="edit-dealer">+ Add Directory Listing</button>
+          </div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Agency</th><th>City</th><th>Phone</th><th>Plan</th><th>Verified</th><th>Actions</th></tr></thead><tbody>
         ${D.map(d => `<tr>
@@ -326,8 +329,9 @@ if (me) {
       return `
         <div class="results-bar">
           <h2>User Accounts &amp; RBAC (${U.length})</h2>
-          <div style="display:flex;gap:8px">
-            <input class="field" id="user-q" placeholder="Search name, email, or role..." style="width:240px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="field" id="user-q" placeholder="Search name, email, or role..." style="width:220px">
+            <button class="btn btn-primary" id="btn-create-user-acc">+ Create User / Dealer</button>
           </div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Name &amp; Email</th><th>Phone</th><th>Role</th><th>Assigned District(s)</th><th>Package</th><th>Actions</th></tr></thead><tbody id="user-rows">
@@ -511,6 +515,132 @@ if (me) {
     };
   }
 
+  // Modal for Super Admin to create a brand new Dealer or User login account
+  function showCreateAccountModal(defaultRole = "dealer") {
+    const m = modal(`
+      <h3>Create New ${defaultRole === "dealer" ? "Dealer" : "User"} Account</h3>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:16px">This creates a live login account so the user or dealer can immediately sign in to Zameen Online.</p>
+      
+      <form id="create-acc-form">
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input class="field" name="name" required placeholder="e.g. Chaudhry Akram">
+          </div>
+          <div class="form-group">
+            <label>Phone / WhatsApp *</label>
+            <input class="field" name="phone" required placeholder="e.g. 03440807888">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Login Email Address *</label>
+            <input class="field" name="email" type="email" required placeholder="e.g. dealer@zameen.online">
+          </div>
+          <div class="form-group">
+            <label>Login Password *</label>
+            <input class="field" name="password" type="text" required value="Zameen@${Math.floor(1000 + Math.random() * 9000)}">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Account Role *</label>
+            <select class="field" name="role" id="new-acc-role">
+              <option value="dealer" ${defaultRole === "dealer" ? "selected" : ""}>Dealer (Real Estate Agency)</option>
+              <option value="user" ${defaultRole === "user" ? "selected" : ""}>User (Standard Member)</option>
+              <option value="district_admin" ${defaultRole === "district_admin" ? "selected" : ""}>District Admin (Regional Moderator)</option>
+              ${isSuper ? '<option value="admin">Admin (Global Platform Moderator)</option>' : ''}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Package Plan *</label>
+            <select class="field" name="plan">
+              ${PACKAGES.map(p => `<option value="${p.name}" ${p.name === (defaultRole === "dealer" ? "Gold" : "Basic") ? "selected" : ""}>${p.name} (${p.ads} Ads · ${p.price ? 'PKR ' + p.price.toLocaleString() : 'Free'})</option>`).join("")}
+            </select>
+          </div>
+        </div>
+
+        <!-- Dealer Fields -->
+        <div id="new-dealer-fields" style="${defaultRole === "dealer" ? "" : "display:none"}">
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Agency Name *</label>
+              <input class="field" name="agencyName" placeholder="e.g. Kashmir Estate Advisors">
+            </div>
+            <div class="form-group">
+              <label>Operating City / District *</label>
+              <select class="field" name="city">
+                ${cityOptions(activeDistrict !== "ALL" ? activeDistrict : "Mirpur AJK", "")}
+              </select>
+            </div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;margin:10px 0 16px;font-weight:700;cursor:pointer">
+            <input type="checkbox" name="verified" checked>
+            <span style="color:#166534">✓ Grant "Verified Dealer" Badge</span>
+          </label>
+        </div>
+
+        <!-- District Admin Fields -->
+        <div class="form-group" id="new-district-fields" style="display:none">
+          <label>Assigned District</label>
+          <select class="field" name="districtAdminCity">
+            ${cityOptions("Mirpur AJK", "")}
+          </select>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-primary" id="btn-submit-create-acc" type="submit">Create Account</button>
+          <button type="button" class="btn btn-outline" data-close>Cancel</button>
+        </div>
+      </form>
+    `);
+
+    const rSel = $("#new-acc-role", m);
+    const dFields = $("#new-dealer-fields", m);
+    const distFields = $("#new-district-fields", m);
+
+    rSel.onchange = () => {
+      dFields.style.display = rSel.value === "dealer" ? "block" : "none";
+      distFields.style.display = rSel.value === "district_admin" ? "block" : "none";
+    };
+
+    $("#create-acc-form", m).onsubmit = async e => {
+      e.preventDefault();
+      const btn = $("#btn-submit-create-acc", m);
+      btn.disabled = true;
+      btn.textContent = "Creating Account...";
+
+      const f = new FormData(e.target);
+      const role = f.get("role");
+      const data = {
+        name: f.get("name"),
+        email: f.get("email"),
+        password: f.get("password"),
+        phone: f.get("phone"),
+        role,
+        plan: f.get("plan"),
+        agencyName: f.get("agencyName") || f.get("name"),
+        city: f.get("city") || f.get("districtAdminCity") || "Mirpur AJK",
+        verified: f.get("verified") === "on",
+        assignedDistricts: role === "district_admin" ? [f.get("districtAdminCity") || "Mirpur AJK"] : []
+      };
+
+      try {
+        await db.adminCreateAccount(data);
+        toast(`Account created successfully for ${data.name}!`);
+        m.remove();
+        await refresh();
+      } catch (err) {
+        console.error(err);
+        toast("Error creating account: " + (err.message || err));
+        btn.disabled = false;
+        btn.textContent = "Create Account";
+      }
+    };
+  }
+
   function editor(kind, id) {
     const isDealer = kind === "dealer";
     const d = (isDealer ? cache.dealers : cache.services).find(x => x.id === id) || {};
@@ -531,18 +661,28 @@ if (me) {
         </div>
         <div class="form-group"><label>About / Bio</label><textarea class="field" name="about" rows="3" style="min-height:80px">${esc(d.about || "")}</textarea></div>
         <label style="display:flex;gap:8px;align-items:center;margin-bottom:18px;font-weight:600"><input type="checkbox" name="verified" ${d.verified ? "checked" : ""}> Verified Agency / Provider</label>
-        <div style="display:flex;gap:10px"><button class="btn btn-primary">Save Record</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
+        <div style="display:flex;gap:10px"><button class="btn btn-primary" id="btn-save-ed">Save Record</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
       </form>`);
 
     $("#ed", m).onsubmit = async e => {
       e.preventDefault();
-      const f = new FormData(e.target);
-      const data = Object.fromEntries(f.entries());
-      data.verified = f.get("verified") === "on";
-      data.whatsapp = data.phone.replace(/\D/g, "").replace(/^0/, "92");
-      for (const k of ["listings", "experience", "rating"]) if (k in data) data[k] = Number(data[k]) || 0;
-      if (isDealer) await db.saveDealer(id, data); else await db.saveService(id, data);
-      m.remove(); toast("Saved"); await refresh();
+      const btn = $("#btn-save-ed", m);
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+      try {
+        const f = new FormData(e.target);
+        const data = Object.fromEntries(f.entries());
+        data.verified = f.get("verified") === "on";
+        data.whatsapp = data.phone.replace(/\D/g, "").replace(/^0/, "92");
+        for (const k of ["listings", "experience", "rating"]) if (k in data) data[k] = Number(data[k]) || 0;
+        if (isDealer) await db.saveDealer(id, data); else await db.saveService(id, data);
+        m.remove(); toast("Saved successfully"); await refresh();
+      } catch (err) {
+        console.error(err);
+        toast("Failed to save: " + (err.message || err));
+        btn.disabled = false;
+        btn.textContent = "Save Record";
+      }
     };
   }
 
@@ -588,6 +728,13 @@ if (me) {
         $("#user-rows").innerHTML = renderUserRows(filtered);
       };
     }
+
+    // Create Account Action Buttons
+    const btnAddDealer = $("#btn-add-dealer-acc");
+    if (btnAddDealer) btnAddDealer.onclick = () => showCreateAccountModal("dealer");
+
+    const btnCreateUser = $("#btn-create-user-acc");
+    if (btnCreateUser) btnCreateUser.onclick = () => showCreateAccountModal("user");
 
     // Load sample data trigger
     const seed = $("#seed");

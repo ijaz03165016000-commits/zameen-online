@@ -9,7 +9,7 @@ export const LIVE = !!(firebaseConfig.apiKey && firebaseConfig.projectId);
 const V = "10.12.2";
 const FB = `https://www.gstatic.com/firebasejs/${V}`;
 
-let fs, fa, app, db, auth;
+let fs, fa, app, db, auth, appMod;
 let currentUser = null;          // { uid, name, email, phone, role }
 const authListeners = [];
 let authReady;
@@ -65,10 +65,10 @@ export const OWNER_EMAILS = [
    Init
 --------------------------------------------------------- */
 async function initLive() {
-  const [appMod, fsMod, authMod] = await Promise.all([
+  const [aMod, fsMod, authMod] = await Promise.all([
     import(`${FB}/firebase-app.js`), import(`${FB}/firebase-firestore.js`), import(`${FB}/firebase-auth.js`)
   ]);
-  fs = fsMod; fa = authMod;
+  appMod = aMod; fs = fsMod; fa = authMod;
   app = appMod.initializeApp(firebaseConfig);
   db = fs.getFirestore(app);
   auth = fa.getAuth(app);
@@ -151,6 +151,97 @@ export async function signUp({ name, email, password, phone, role = "user" }) {
   }
   currentUser = publicUser(u); emit();
   return currentUser;
+}
+
+/* Super Admin / Admin creates a new user or dealer login account without being logged out */
+export async function adminCreateAccount({ name, email, password, phone, role = "dealer", plan = "Basic", agencyName = "", city = "Mirpur AJK", verified = true, assignedDistricts = [] }) {
+  if (LIVE) {
+    if (!appMod || !fa) await initLive();
+    const tempApp = appMod.initializeApp(firebaseConfig, "TempAdminCreateUserApp_" + Math.random().toString(36).slice(2, 9));
+    const tempAuth = fa.getAuth(tempApp);
+
+    try {
+      const cred = await fa.createUserWithEmailAndPassword(tempAuth, email, password);
+      if (name) {
+        await fa.updateProfile(cred.user, { displayName: name }).catch(() => {});
+      }
+      const newUid = cred.user.uid;
+
+      const userDoc = {
+        name: name || "Member",
+        email: email.toLowerCase(),
+        phone: phone || "",
+        role: role || "user",
+        plan: plan || "Basic",
+        city: city || "Mirpur AJK",
+        assignedDistricts: role === "district_admin" ? (assignedDistricts?.length ? assignedDistricts : [city || "Mirpur AJK"]) : [],
+        createdAt: fs.serverTimestamp(),
+        createdByAdmin: currentUser?.uid || "admin"
+      };
+      await fs.setDoc(fs.doc(db, "users", newUid), userDoc);
+
+      if (role === "dealer") {
+        const dealerDoc = {
+          name: agencyName || name || "Real Estate Agency",
+          owner: name || "",
+          city: city || "Mirpur AJK",
+          phone: phone || "",
+          whatsapp: phone ? String(phone).replace(/\D/g, "").replace(/^0/, "92") : "",
+          verified: !!verified,
+          plan: plan || "Basic",
+          about: "Official registered real estate dealer on Zameen Online.",
+          listings: 0,
+          createdAt: fs.serverTimestamp()
+        };
+        await fs.setDoc(fs.doc(db, "dealers", newUid), dealerDoc);
+      }
+
+      await fa.signOut(tempAuth);
+      return { uid: newUid, ...userDoc };
+    } finally {
+      try {
+        await appMod.deleteApp(tempApp);
+      } catch (err) {
+        console.warn("Could not delete temporary app:", err);
+      }
+    }
+  } else {
+    const s = store();
+    if (s.users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+      throw new Error("An account with this email already exists.");
+    }
+    const newUid = uid();
+    const newUser = {
+      uid: newUid,
+      id: newUid,
+      name: name || "Member",
+      email: email.toLowerCase(),
+      password,
+      phone: phone || "",
+      role: role || "user",
+      plan: plan || "Basic",
+      assignedDistricts: role === "district_admin" ? (assignedDistricts?.length ? assignedDistricts : [city || "Mirpur AJK"]) : [],
+      createdAt: Date.now()
+    };
+    s.users.push(newUser);
+    if (role === "dealer") {
+      s.dealers.unshift({
+        id: newUid,
+        name: agencyName || name || "Real Estate Agency",
+        owner: name || "",
+        city: city || "Mirpur AJK",
+        phone: phone || "",
+        whatsapp: phone ? String(phone).replace(/\D/g, "").replace(/^0/, "92") : "",
+        verified: !!verified,
+        plan: plan || "Basic",
+        listings: 0,
+        about: "Official registered real estate dealer on Zameen Online.",
+        createdAt: Date.now()
+      });
+    }
+    save(s);
+    return newUser;
+  }
 }
 
 export async function signIn(email, password) {
@@ -280,11 +371,11 @@ export async function addView(id) {
 --------------------------------------------------------- */
 export const getDealers = () => list("dealers");
 export const getDealer = id => get("dealers", id);
-export const saveDealer = (id, data) => id ? setDoc("dealers", id, data) : add("dealers", data);
+export const saveDealer = (id, data) => (id && id !== "undefined") ? setDoc("dealers", id, data) : add("dealers", data);
 export const deleteDealer = id => remove("dealers", id);
 
 export const getServices = () => list("services");
-export const saveService = (id, data) => id ? setDoc("services", id, data) : add("services", data);
+export const saveService = (id, data) => (id && id !== "undefined") ? setDoc("services", id, data) : add("services", data);
 export const deleteService = id => remove("services", id);
 
 export const addInquiry = data => add("inquiries", { ...data, read: false });
