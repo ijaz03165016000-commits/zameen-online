@@ -12,11 +12,12 @@ service cloud.firestore {
     }
 
     function getUserDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
     }
 
     function isOwnerEmail() {
-      return signedIn() && (
+      return signedIn() && request.auth.token.email is string && (
         request.auth.token.email.matches('(?i).*ijaz.*') ||
         request.auth.token.email == 'admin@zameen.online' ||
         request.auth.token.email == 'info@zameen.online' ||
@@ -50,7 +51,7 @@ service cloud.firestore {
     }
 
     function ownsListing(id) {
-      return signedIn() && get(/databases/$(database)/documents/listings/$(id)).data.ownerId == request.auth.uid;
+      return signedIn() && exists(/databases/$(database)/documents/listings/$(id)) && get(/databases/$(database)/documents/listings/$(id)).data.ownerId == request.auth.uid;
     }
 
     // -------------------------------------------------------------
@@ -60,8 +61,8 @@ service cloud.firestore {
       // User can read own doc; all staff (admin, district admin) can read user docs
       allow read: if signedIn() && (request.auth.uid == uid || isStaff());
 
-      // Anyone signed in can create their own user document
-      allow create: if signedIn() && request.auth.uid == uid;
+      // Admins or the user themselves can create their user document
+      allow create: if isGlobalAdmin() || (signedIn() && request.auth.uid == uid);
 
       // Global Admins can update any user doc (assign roles, packages, districts)
       // Regular users can only update their own profile (not role, plan, or assignedDistricts)

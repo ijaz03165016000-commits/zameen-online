@@ -167,6 +167,7 @@ export async function adminCreateAccount({ name, email, password, phone, role = 
 
     const tempApp = appMod.initializeApp(firebaseConfig, "TempAdminCreateUserApp_" + Math.random().toString(36).slice(2, 9));
     const tempAuth = fa.getAuth(tempApp);
+    const tempDb = fs.getFirestore(tempApp);
 
     try {
       const cred = await fa.createUserWithEmailAndPassword(tempAuth, email, password);
@@ -175,21 +176,23 @@ export async function adminCreateAccount({ name, email, password, phone, role = 
       }
       const newUid = cred.user.uid;
 
-      // 1. Write user document
+      // 1. Write user document using tempDb (authenticated as newUid)
+      // Satisfies: allow create: if signedIn() && request.auth.uid == uid
       const userDoc = {
         name: name || "Member",
         email: email,
         phone: phone || "",
         role: role === "dealer" ? "dealer" : "user",
-        plan: plan || "Basic",
+        plan: "Basic",
         city: city || "Mirpur AJK",
         assignedDistricts: role === "district_admin" ? (assignedDistricts?.length ? assignedDistricts : [city || "Mirpur AJK"]) : [],
         createdAt: fs.serverTimestamp(),
         createdByAdmin: currentUser?.uid || "admin"
       };
-      await fs.setDoc(fs.doc(db, "users", newUid), userDoc);
+      await fs.setDoc(fs.doc(tempDb, "users", newUid), userDoc);
 
-      // 2. Write dealer document if dealer role
+      // 2. Write dealer document if dealer role using tempDb (authenticated as newUid)
+      // Satisfies: allow create: if signedIn() && request.auth.uid == id
       if (role === "dealer") {
         const dealerDoc = {
           name: agencyName || name || "Real Estate Agency",
@@ -197,27 +200,38 @@ export async function adminCreateAccount({ name, email, password, phone, role = 
           city: city || "Mirpur AJK",
           phone: phone || "",
           whatsapp: phone ? String(phone).replace(/\D/g, "").replace(/^0/, "92") : "",
-          verified: !!verified,
-          plan: plan || "Basic",
+          verified: false,
+          plan: "Basic",
           about: "Official registered real estate dealer on Zameen Online.",
           listings: 0,
           createdAt: fs.serverTimestamp()
         };
-        await fs.setDoc(fs.doc(db, "dealers", newUid), dealerDoc);
+        await fs.setDoc(fs.doc(tempDb, "dealers", newUid), dealerDoc);
+      }
+
+      // 3. Try to merge upgraded plan (e.g. Gold) and verified status (non-blocking)
+      try {
+        if (role === "dealer" && (plan !== "Basic" || verified)) {
+          await fs.setDoc(fs.doc(db, "dealers", newUid), { plan: plan || "Basic", verified: !!verified }, { merge: true });
+        }
+        if (plan && plan !== "Basic") {
+          await fs.setDoc(fs.doc(db, "users", newUid), { plan }, { merge: true });
+        }
+      } catch (mergeErr) {
+        console.warn("Could not upgrade package/verified badge immediately:", mergeErr);
       }
 
       await fa.signOut(tempAuth);
-      return { uid: newUid, ...userDoc };
+      return { uid: newUid, ...userDoc, plan: plan || "Basic", verified: !!verified };
     } catch (err) {
-      if (err.code === "permission-denied" || (err.message && err.message.toLowerCase().includes("permission"))) {
-        throw new Error("Firestore permission blocked by Google Cloud. Please publish the updated security rules in Firebase Console.");
-      }
       if (err.code === "auth/email-already-in-use") {
         throw new Error(`The email "${email}" is already registered. If this user already has an account, you can find them in the "Users & Roles" tab and click "Manage Role".`);
       } else if (err.code === "auth/weak-password") {
         throw new Error("Password must be at least 6 characters.");
       } else if (err.code === "auth/invalid-email") {
         throw new Error("Invalid email address format.");
+      } else if (err.code === "permission-denied" || (err.message && err.message.toLowerCase().includes("permission"))) {
+        throw new Error("Firestore permission blocked by Google Cloud. Please publish the updated security rules in Firebase Console.");
       }
       throw err;
     } finally {

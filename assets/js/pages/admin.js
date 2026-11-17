@@ -1,5 +1,5 @@
-import { requireUser, $, $$, esc, formatPrice, timeAgo, toast, modal, cityOptions, typeLabel, coverImg, hydrateThumbs, waLink } from "../app.js?v=20261117_06";
-import * as db from "../db.js?v=20261117_06";
+import { requireUser, $, $$, esc, formatPrice, timeAgo, toast, modal, cityOptions, typeLabel, coverImg, hydrateThumbs, waLink } from "../app.js?v=20261117_10";
+import * as db from "../db.js?v=20261117_10";
 import { SERVICE_CATEGORIES, PACKAGES, CITIES } from "../seed.js";
 
 const me = await requireUser(["super_admin", "admin", "district_admin"]);
@@ -38,10 +38,26 @@ if (me) {
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
             <span class="badge ${roleClass}" style="padding:2px 8px;font-size:10px">${roleTitle}</span>
             ${isDistrict ? `<span style="font-size:12px;opacity:.9">📍 ${esc(userDistricts.join(", "))}</span>` : `<span style="font-size:12px;opacity:.9">🌐 All Pakistan &amp; AJK</span>`}
+            ${isOwner && me.role !== "super_admin" ? `<button id="btn-reclaim-super-admin" class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;padding:2px 8px;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer">👑 Reclaim Super Admin</button>` : ""}
           </div>
         </div>
       </div>
     `;
+
+    const btnReclaim = $("#btn-reclaim-super-admin");
+    if (btnReclaim) {
+      btnReclaim.onclick = async () => {
+        btnReclaim.disabled = true;
+        btnReclaim.textContent = "Restoring...";
+        try {
+          await db.claimSuperAdmin();
+          toast("Super Admin role restored!");
+          setTimeout(() => location.reload(), 600);
+        } catch (e) {
+          toast("Notice: " + e.message);
+        }
+      };
+    }
   }
 
   // Populate District Selector
