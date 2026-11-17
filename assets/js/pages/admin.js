@@ -362,19 +362,22 @@ if (me) {
     const currentAgencyName = existingDealer.name || target.name || "";
     const currentCity = existingDealer.city || (currentDistricts[0] || "Mirpur AJK");
     const isVerified = !!existingDealer.verified;
+    const isSelf = (target.id === me.uid || target.uid === me.uid || (target.email && target.email.toLowerCase() === (me.email || "").toLowerCase()));
 
     const m = modal(`
       <h3>Manage User Permissions: ${esc(target.name)}</h3>
+      ${isSelf ? '<div class="alert alert-info" style="font-size:13px;margin-bottom:14px">🛡️ <b>Protected Account:</b> This is your own administrator profile. Self-demotion is prevented so you never lose control panel access.</div>' : ''}
       <form id="role-form">
         <div class="form-group">
           <label>Account Role</label>
-          <select class="field" name="role" id="role-select">
+          <select class="field" name="role" id="role-select" ${isSelf ? 'disabled' : ''}>
             <option value="user" ${currentRole === "user" ? "selected" : ""}>User (Standard Member)</option>
             <option value="dealer" ${currentRole === "dealer" ? "selected" : ""}>Dealer (Real Estate Agency)</option>
             <option value="district_admin" ${currentRole === "district_admin" ? "selected" : ""}>District Admin (Regional Moderator)</option>
             <option value="admin" ${currentRole === "admin" ? "selected" : ""}>Admin (Global Platform Moderator)</option>
             ${isSuper ? `<option value="super_admin" ${currentRole === "super_admin" ? "selected" : ""}>Super Admin (Full System Control)</option>` : ""}
           </select>
+          ${isSelf ? '<input type="hidden" name="role" value="super_admin">' : ''}
         </div>
 
         <!-- Dealer Specific Fields -->

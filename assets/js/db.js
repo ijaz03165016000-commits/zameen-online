@@ -55,6 +55,12 @@ const publicUser = u => u && ({
   assignedDistricts: Array.isArray(u.assignedDistricts) ? u.assignedDistricts : (u.district ? [u.district] : [])
 });
 
+export const OWNER_EMAILS = [
+  "ijaz03165016000@gmail.com",
+  "admin@zameen.online",
+  "info@zameen.online"
+];
+
 /* ---------------------------------------------------------
    Init
 --------------------------------------------------------- */
@@ -71,13 +77,22 @@ async function initLive() {
       if (fbUser) {
         const snap = await fs.getDoc(fs.doc(db, "users", fbUser.uid));
         const p = snap.exists() ? snap.data() : {};
+        const emailLower = (fbUser.email || "").toLowerCase();
+        const isOwner = OWNER_EMAILS.includes(emailLower);
+        const resolvedRole = isOwner ? "super_admin" : (p.role || "user");
+
+        // Self-heal: If owner's role in Firestore document was accidentally changed, restore it automatically!
+        if (isOwner && p.role !== "super_admin") {
+          fs.setDoc(fs.doc(db, "users", fbUser.uid), { role: "super_admin" }, { merge: true }).catch(console.error);
+        }
+
         currentUser = { 
           uid: fbUser.uid, 
           email: fbUser.email, 
           name: p.name || fbUser.displayName || fbUser.email, 
           phone: p.phone || "", 
-          role: p.role || "user", 
-          plan: p.plan || "Basic",
+          role: resolvedRole, 
+          plan: isOwner ? "Elite" : (p.plan || "Basic"),
           assignedDistricts: Array.isArray(p.assignedDistricts) ? p.assignedDistricts : (p.district ? [p.district] : [])
         };
       } else currentUser = null;
