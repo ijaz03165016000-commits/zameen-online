@@ -286,11 +286,30 @@ async function get(col, id) {
   return (store()[col] || []).find(r => r.id === id) || null;
 }
 async function add(col, data) {
-  if (LIVE) { const ref = await fs.addDoc(fs.collection(db, col), { ...data, createdAt: fs.serverTimestamp() }); return ref.id; }
+  if (LIVE) {
+    try {
+      const ref = await fs.addDoc(fs.collection(db, col), { ...data, createdAt: fs.serverTimestamp() });
+      return ref.id;
+    } catch (err) {
+      if (err.code === "permission-denied" || (err.message && err.message.includes("permission"))) {
+        throw new Error("Firestore Permission Denied. Your cloud account role must be 'admin' or updated rules must be published in Firebase Console.");
+      }
+      throw err;
+    }
+  }
   const s = store(); const id = uid(); s[col].unshift({ ...data, id, createdAt: Date.now() }); save(s); return id;
 }
 async function setDoc(col, id, data) {
-  if (LIVE) return fs.setDoc(fs.doc(db, col, id), { ...data, createdAt: data.createdAt ? fs.Timestamp.fromMillis(data.createdAt) : fs.serverTimestamp() }, { merge: true });
+  if (LIVE) {
+    try {
+      return await fs.setDoc(fs.doc(db, col, id), { ...data, createdAt: data.createdAt ? fs.Timestamp.fromMillis(data.createdAt) : fs.serverTimestamp() }, { merge: true });
+    } catch (err) {
+      if (err.code === "permission-denied" || (err.message && err.message.includes("permission"))) {
+        throw new Error("Firestore Permission Denied. Your cloud account role must be 'admin' or updated rules must be published in Firebase Console.");
+      }
+      throw err;
+    }
+  }
   const s = store(); const i = s[col].findIndex(r => r.id === id);
   if (i >= 0) s[col][i] = { ...s[col][i], ...data }; else s[col].unshift({ ...data, id, createdAt: data.createdAt || Date.now() });
   save(s);

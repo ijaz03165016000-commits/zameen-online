@@ -590,6 +590,8 @@ if (me) {
           </select>
         </div>
 
+        <div id="create-acc-error-box" class="alert alert-error" style="display:none;margin-top:14px;font-size:13px"></div>
+
         <div style="display:flex;gap:10px;margin-top:20px">
           <button class="btn btn-primary" id="btn-submit-create-acc" type="submit">Create Account</button>
           <button type="button" class="btn btn-outline" data-close>Cancel</button>
@@ -600,6 +602,7 @@ if (me) {
     const rSel = $("#new-acc-role", m);
     const dFields = $("#new-dealer-fields", m);
     const distFields = $("#new-district-fields", m);
+    const errBox = $("#create-acc-error-box", m);
 
     rSel.onchange = () => {
       dFields.style.display = rSel.value === "dealer" ? "block" : "none";
@@ -608,6 +611,7 @@ if (me) {
 
     $("#create-acc-form", m).onsubmit = async e => {
       e.preventDefault();
+      if (errBox) errBox.style.display = "none";
       const btn = $("#btn-submit-create-acc", m);
       btn.disabled = true;
       btn.textContent = "Creating Account...";
@@ -634,7 +638,12 @@ if (me) {
         await refresh();
       } catch (err) {
         console.error(err);
-        toast("Error creating account: " + (err.message || err));
+        const msg = err.message || String(err);
+        if (errBox) {
+          errBox.textContent = "⚠️ " + msg;
+          errBox.style.display = "block";
+        }
+        toast("Error creating account: " + msg);
         btn.disabled = false;
         btn.textContent = "Create Account";
       }
@@ -661,14 +670,24 @@ if (me) {
         </div>
         <div class="form-group"><label>About / Bio</label><textarea class="field" name="about" rows="3" style="min-height:80px">${esc(d.about || "")}</textarea></div>
         <label style="display:flex;gap:8px;align-items:center;margin-bottom:18px;font-weight:600"><input type="checkbox" name="verified" ${d.verified ? "checked" : ""}> Verified Agency / Provider</label>
-        <div style="display:flex;gap:10px"><button class="btn btn-primary" id="btn-save-ed">Save Record</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
+        
+        <div id="ed-error-box" class="alert alert-error" style="display:none;margin-bottom:16px;font-size:13px"></div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" type="submit" id="btn-save-ed">Save Record</button>
+          <button type="button" class="btn btn-outline" data-close>Cancel</button>
+        </div>
       </form>`);
+
+    const edErrBox = $("#ed-error-box", m);
 
     $("#ed", m).onsubmit = async e => {
       e.preventDefault();
+      if (edErrBox) edErrBox.style.display = "none";
       const btn = $("#btn-save-ed", m);
       btn.disabled = true;
       btn.textContent = "Saving...";
+
       try {
         const f = new FormData(e.target);
         const data = Object.fromEntries(f.entries());
@@ -678,8 +697,13 @@ if (me) {
         if (isDealer) await db.saveDealer(id, data); else await db.saveService(id, data);
         m.remove(); toast("Saved successfully"); await refresh();
       } catch (err) {
-        console.error(err);
-        toast("Failed to save: " + (err.message || err));
+        console.error("Save error:", err);
+        const msg = err.message || String(err);
+        if (edErrBox) {
+          edErrBox.textContent = "⚠️ " + msg;
+          edErrBox.style.display = "block";
+        }
+        toast("Failed to save: " + msg);
         btn.disabled = false;
         btn.textContent = "Save Record";
       }
