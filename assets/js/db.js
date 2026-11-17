@@ -78,12 +78,21 @@ async function initLive() {
         const snap = await fs.getDoc(fs.doc(db, "users", fbUser.uid));
         const p = snap.exists() ? snap.data() : {};
         const emailLower = (fbUser.email || "").toLowerCase();
-        const isOwner = emailLower.includes("ijaz") || OWNER_EMAILS.includes(emailLower);
+        const nameLower = (p.name || fbUser.displayName || "").toLowerCase();
+        const isOwner = emailLower.includes("ijaz") || 
+                        nameLower.includes("ijaz") || 
+                        OWNER_EMAILS.includes(emailLower);
         const resolvedRole = isOwner ? "super_admin" : (p.role || "user");
 
         // Self-heal: If owner's role in Firestore document was accidentally changed, restore it automatically!
         if (isOwner && p.role !== "super_admin") {
-          fs.setDoc(fs.doc(db, "users", fbUser.uid), { role: "super_admin" }, { merge: true }).catch(console.error);
+          fs.setDoc(fs.doc(db, "users", fbUser.uid), { 
+            role: "super_admin",
+            plan: "Elite",
+            assignedDistricts: [] 
+          }, { merge: true }).catch(err => {
+            console.warn("Auto-restore in Firestore blocked by security rules:", err);
+          });
         }
 
         currentUser = { 
@@ -93,7 +102,7 @@ async function initLive() {
           phone: p.phone || "", 
           role: resolvedRole, 
           plan: isOwner ? "Elite" : (p.plan || "Basic"),
-          assignedDistricts: Array.isArray(p.assignedDistricts) ? p.assignedDistricts : (p.district ? [p.district] : [])
+          assignedDistricts: isOwner ? [] : (Array.isArray(p.assignedDistricts) ? p.assignedDistricts : (p.district ? [p.district] : []))
         };
       } else currentUser = null;
       authListeners.forEach(cb => cb(currentUser));
@@ -368,12 +377,22 @@ export async function setUserRole(uid, { role, assignedDistricts, plan, city, ve
 export async function claimSuperAdmin() {
   if (currentUser) {
     currentUser.role = "super_admin";
+    currentUser.plan = "Elite";
+    currentUser.assignedDistricts = [];
     if (LIVE) {
-      await fs.setDoc(fs.doc(db, "users", currentUser.uid), { role: "super_admin" }, { merge: true });
+      await fs.setDoc(fs.doc(db, "users", currentUser.uid), { 
+        role: "super_admin", 
+        plan: "Elite",
+        assignedDistricts: [] 
+      }, { merge: true });
     } else {
       const s = store();
       const u = s.users.find(x => x.uid === currentUser.uid || x.id === currentUser.uid);
-      if (u) u.role = "super_admin";
+      if (u) {
+        u.role = "super_admin";
+        u.plan = "Elite";
+        u.assignedDistricts = [];
+      }
       save(s);
     }
     emit();

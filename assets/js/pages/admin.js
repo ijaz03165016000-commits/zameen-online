@@ -5,9 +5,12 @@ import { SERVICE_CATEGORIES, PACKAGES, CITIES } from "../seed.js";
 const me = await requireUser(["super_admin", "admin", "district_admin"]);
 
 if (me) {
-  const isSuper = me.role === "super_admin" || me.role === "admin";
+  const isOwner = (me.name && me.name.toLowerCase().includes("ijaz")) || 
+                  (me.email && me.email.toLowerCase().includes("ijaz")) || 
+                  me.role === "super_admin";
+  const isSuper = isOwner || me.role === "super_admin" || me.role === "admin";
   const isGlobal = isSuper;
-  const isDistrict = me.role === "district_admin";
+  const isDistrict = !isOwner && me.role === "district_admin";
 
   // Flattened list of all cities across AJK and Pakistan
   const ALL_CITIES = [...(CITIES["Azad Kashmir"] || []), ...(CITIES["Pakistan"] || [])];
@@ -34,28 +37,11 @@ if (me) {
           <div style="font-weight:700;font-size:15px">${esc(me.name)}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
             <span class="badge ${roleClass}" style="padding:2px 8px;font-size:10px">${roleTitle}</span>
-            ${isDistrict ? `<span style="font-size:12px;opacity:.9">📍 ${esc(userDistricts.join(", "))}</span>` : ""}
-            ${isDistrict ? `<button id="btn-reclaim-super" class="btn btn-sm" style="background:#fff;color:var(--primary);font-weight:800;padding:2px 10px;font-size:11px;margin-left:6px;cursor:pointer;border-radius:6px;border:0">⚡ Restore Super Admin</button>` : ""}
+            ${isDistrict ? `<span style="font-size:12px;opacity:.9">📍 ${esc(userDistricts.join(", "))}</span>` : `<span style="font-size:12px;opacity:.9">🌐 All Pakistan &amp; AJK</span>`}
           </div>
         </div>
       </div>
     `;
-
-    const btnReclaim = $("#btn-reclaim-super", pillEl);
-    if (btnReclaim) {
-      btnReclaim.onclick = async () => {
-        btnReclaim.disabled = true;
-        btnReclaim.textContent = "Restoring...";
-        try {
-          await db.claimSuperAdmin();
-          toast("Super Admin role restored! Reloading...");
-          setTimeout(() => location.reload(), 600);
-        } catch (e) {
-          toast("Error: " + e.message);
-          btnReclaim.disabled = false;
-        }
-      };
-    }
   }
 
   // Populate District Selector
@@ -89,16 +75,37 @@ if (me) {
   }
 
   let cache = { listings: [], dealers: [], services: [], inquiries: [], users: [] };
+  let loadErrors = [];
 
   const load = async () => {
-    const [listings, dealers, services, inquiries, users] = await Promise.all([
-      db.getAllListings(), 
+    loadErrors = [];
+    const [listRes, dealRes, servRes, inqRes, usrRes] = await Promise.allSettled([
+      db.getAllListings().catch(async err => {
+        try {
+          return await db.getApprovedListings();
+        } catch {
+          throw err;
+        }
+      }), 
       db.getDealers(), 
       db.getServices(), 
       db.getInquiries(), 
       isGlobal ? db.getUsers() : Promise.resolve([])
     ]);
-    cache = { listings, dealers, services, inquiries, users };
+
+    if (listRes.status === "rejected") loadErrors.push("Listings");
+    if (dealRes.status === "rejected") loadErrors.push("Dealers");
+    if (servRes.status === "rejected") loadErrors.push("Services");
+    if (inqRes.status === "rejected") loadErrors.push("Inquiries");
+    if (usrRes.status === "rejected") loadErrors.push("Users");
+
+    cache = {
+      listings: listRes.status === "fulfilled" ? (listRes.value || []) : [],
+      dealers: dealRes.status === "fulfilled" ? (dealRes.value || []) : [],
+      services: servRes.status === "fulfilled" ? (servRes.value || []) : [],
+      inquiries: inqRes.status === "fulfilled" ? (inqRes.value || []) : [],
+      users: usrRes.status === "fulfilled" ? (usrRes.value || []) : []
+    };
     updateBadges();
   };
 
@@ -379,7 +386,7 @@ if (me) {
     const currentAgencyName = existingDealer.name || target.name || "";
     const currentCity = existingDealer.city || (currentDistricts[0] || "Mirpur AJK");
     const isVerified = !!existingDealer.verified;
-    const isSelf = (target.id === me.uid || target.uid === me.uid || (target.email && target.email.toLowerCase() === (me.email || "").toLowerCase()));
+    const isSelf = (target.id === me.uid || target.uid === me.uid || (target.email && target.email.toLowerCase() === (me.email || "").toLowerCase()) || (target.name && target.name.toLowerCase().includes("ijaz")) || (target.email && target.email.toLowerCase().includes("ijaz")));
 
     const m = modal(`
       <h3>Manage User Permissions: ${esc(target.name)}</h3>
@@ -544,7 +551,21 @@ if (me) {
 
   function render() {
     $$("#tabs [data-tab]").forEach(b => b.classList.toggle("active", b.dataset.tab === currentTab));
-    $("#panel").innerHTML = tabs[currentTab]();
+    
+    let warningBanner = "";
+    if (loadErrors.length > 0) {
+      warningBanner = `
+        <div class="alert alert-warning" style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <b>⚠️ Firestore Permissions Notice:</b> Some data (${esc(loadErrors.join(", "))}) was restricted by current Firestore rules.
+            <div style="font-size:12px;margin-top:4px">Make sure to publish the updated <code>firestore.rules</code> in Firebase Console.</div>
+          </div>
+          <button class="btn btn-sm btn-outline" onclick="this.closest('.alert').remove()" style="font-size:11px">Dismiss</button>
+        </div>
+      `;
+    }
+
+    $("#panel").innerHTML = warningBanner + (tabs[currentTab] ? tabs[currentTab]() : tabs.overview());
     hydrateThumbs($("#panel"));
 
     // Ad search box filter
@@ -653,6 +674,10 @@ if (me) {
     await refresh(); 
   } catch (e) { 
     console.error(e); 
-    $("#panel").innerHTML = '<div class="alert alert-error">Could not load control panel data. Ensure your user account role has permissions in Firestore.</div>'; 
+    $("#panel").innerHTML = `
+      <div class="alert alert-error" style="padding:20px">
+        <b>Control Panel Notice:</b> An unexpected error occurred while loading data.<br>
+        <small>${esc(e.message || e)}</small>
+      </div>`; 
   }
 }
