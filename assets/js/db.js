@@ -157,62 +157,17 @@ export async function signUp({ name, email, password, phone, role = "user" }) {
 export async function adminCreateAccount({ name, email, password, phone, role = "dealer", plan = "Basic", agencyName = "", city = "Mirpur AJK", verified = true, assignedDistricts = [] }) {
   email = (email || "").trim().toLowerCase();
 
+  // If the admin enters their own email address:
+  if (currentUser && currentUser.email && currentUser.email.toLowerCase() === email) {
+    throw new Error(`You entered your own Super Admin email (${email}). To create a new dealer account, please enter the dealer's own email (e.g. noman@gmail.com).`);
+  }
+
   if (LIVE) {
     if (!appMod || !fa) await initLive();
 
-    // Check if an existing account with this email exists in our users collection
-    let existingUid = null;
-    let existingUser = null;
-    if (currentUser && currentUser.email && currentUser.email.toLowerCase() === email) {
-      existingUid = currentUser.uid;
-      existingUser = currentUser;
-    } else {
-      try {
-        const snap = await fs.getDocs(fs.query(fs.collection(db, "users"), fs.where("email", "==", email)));
-        if (!snap.empty) {
-          existingUid = snap.docs[0].id;
-          existingUser = snap.docs[0].data();
-        }
-      } catch (e) {
-        console.warn("Could not query users by email:", e);
-      }
-    }
-
-    if (existingUid) {
-      // Account already exists in users! Attach or update dealer profile
-      const userUpdates = {
-        name: name || existingUser.name || "Member",
-        phone: phone || existingUser.phone || "",
-        plan: plan || existingUser.plan || "Basic",
-        city: city || existingUser.city || "Mirpur AJK",
-        updatedAt: Date.now()
-      };
-      if (existingUser.role !== "super_admin") {
-        userUpdates.role = role || existingUser.role;
-      }
-      await fs.setDoc(fs.doc(db, "users", existingUid), userUpdates, { merge: true });
-
-      if (role === "dealer" || agencyName) {
-        const dealerDoc = {
-          name: agencyName || name || "Real Estate Agency",
-          owner: name || existingUser.name || "",
-          city: city || "Mirpur AJK",
-          phone: phone || existingUser.phone || "",
-          whatsapp: phone ? String(phone).replace(/\D/g, "").replace(/^0/, "92") : (existingUser.phone ? String(existingUser.phone).replace(/\D/g, "").replace(/^0/, "92") : ""),
-          verified: !!verified,
-          plan: plan || existingUser.plan || "Basic",
-          about: "Official registered real estate dealer on Zameen Online.",
-          listings: 0,
-          createdAt: fs.serverTimestamp()
-        };
-        await fs.setDoc(fs.doc(db, "dealers", existingUid), dealerDoc, { merge: true });
-      }
-
-      return { uid: existingUid, ...existingUser, ...userUpdates, isExisting: true };
-    }
-
     const tempApp = appMod.initializeApp(firebaseConfig, "TempAdminCreateUserApp_" + Math.random().toString(36).slice(2, 9));
     const tempAuth = fa.getAuth(tempApp);
+    const tempDb = fs.getFirestore(tempApp);
 
     try {
       const cred = await fa.createUserWithEmailAndPassword(tempAuth, email, password);
@@ -221,19 +176,24 @@ export async function adminCreateAccount({ name, email, password, phone, role = 
       }
       const newUid = cred.user.uid;
 
+      // 1. Write user document using tempDb (authenticated as newUid)
+      // Under initial Firestore security rules:
+      // allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role in ['user', 'dealer'] && request.resource.data.plan == 'Basic';
       const userDoc = {
         name: name || "Member",
         email: email,
         phone: phone || "",
-        role: role || "user",
-        plan: plan || "Basic",
+        role: role === "dealer" ? "dealer" : "user",
+        plan: "Basic",
         city: city || "Mirpur AJK",
-        assignedDistricts: role === "district_admin" ? (assignedDistricts?.length ? assignedDistricts : [city || "Mirpur AJK"]) : [],
         createdAt: fs.serverTimestamp(),
         createdByAdmin: currentUser?.uid || "admin"
       };
-      await fs.setDoc(fs.doc(db, "users", newUid), userDoc);
+      await fs.setDoc(fs.doc(tempDb, "users", newUid), userDoc);
 
+      // 2. Write dealer document using tempDb (authenticated as newUid)
+      // Under initial Firestore security rules:
+      // allow create: if isAdmin() || (signedIn() && request.auth.uid == id && request.resource.data.verified == false && request.resource.data.plan == 'Basic');
       if (role === "dealer") {
         const dealerDoc = {
           name: agencyName || name || "Real Estate Agency",
@@ -241,22 +201,28 @@ export async function adminCreateAccount({ name, email, password, phone, role = 
           city: city || "Mirpur AJK",
           phone: phone || "",
           whatsapp: phone ? String(phone).replace(/\D/g, "").replace(/^0/, "92") : "",
-          verified: !!verified,
-          plan: plan || "Basic",
+          verified: false,
+          plan: "Basic",
           about: "Official registered real estate dealer on Zameen Online.",
           listings: 0,
           createdAt: fs.serverTimestamp()
         };
-        await fs.setDoc(fs.doc(db, "dealers", newUid), dealerDoc);
+        await fs.setDoc(fs.doc(tempDb, "dealers", newUid), dealerDoc);
+      }
+
+      // 3. Try to merge upgraded plan and verified status using admin db credentials (non-blocking)
+      if (plan && plan !== "Basic") {
+        await fs.setDoc(fs.doc(db, "dealers", newUid), { plan, verified: !!verified }, { merge: true }).catch(() => {});
+        await fs.setDoc(fs.doc(db, "users", newUid), { plan }, { merge: true }).catch(() => {});
       }
 
       await fa.signOut(tempAuth);
-      return { uid: newUid, ...userDoc };
+      return { uid: newUid, ...userDoc, plan: plan || "Basic", verified: !!verified };
     } catch (authErr) {
       if (authErr.code === "auth/email-already-in-use") {
-        throw new Error(`The email "${email}" is already registered. If this is an existing user, you can assign them the Dealer role via Users & Roles.`);
+        throw new Error(`The email "${email}" is already registered. If this user already has an account, you can find them in the "Users & Roles" tab and click "Manage Role".`);
       } else if (authErr.code === "auth/weak-password") {
-        throw new Error("Password should be at least 6 characters.");
+        throw new Error("Password must be at least 6 characters.");
       } else if (authErr.code === "auth/invalid-email") {
         throw new Error("Invalid email address format.");
       }

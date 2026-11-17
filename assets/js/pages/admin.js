@@ -535,8 +535,9 @@ if (me) {
 
         <div class="grid-2">
           <div class="form-group">
-            <label>Login Email Address *</label>
-            <input class="field" name="email" type="email" required placeholder="e.g. dealer@zameen.online">
+            <label>Dealer's Login Email Address *</label>
+            <input class="field" name="email" type="email" required placeholder="e.g. noman@gmail.com">
+            <small style="color:var(--muted);display:block;margin-top:4px">⚠️ Must be the dealer's own email. Do not enter your admin email.</small>
           </div>
           <div class="form-group">
             <label>Login Password *</label>
