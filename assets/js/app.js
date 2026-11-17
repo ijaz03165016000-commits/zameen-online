@@ -128,16 +128,19 @@ const NAV = [
   ["dealers.html", "Dealers"], ["services.html", "🛠 Services"], ["packages.html", "Packages"]
 ];
 
+export const ADMIN_ROLES = ["super_admin", "admin", "district_admin"];
+export const isAdminRole = r => ADMIN_ROLES.includes(r);
+
 function userArea(u) {
   if (!u) return `<a class="btn btn-primary desk" href="login.html">Sign In</a><a class="btn btn-accent desk" href="post-ad.html">+ Post Ad</a>`;
   const initials = esc((u.name || "U").split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase());
-  return `${u.role === "admin" ? '<a class="btn btn-outline desk" href="admin.html">Admin</a>' : ""}
+  return `${isAdminRole(u.role) ? '<a class="btn btn-outline desk" href="admin.html">Admin</a>' : ""}
     <a class="user-chip desk" href="dashboard.html"><span class="avatar">${initials}</span>${esc(u.name.split(" ")[0])}</a>
     <a class="btn btn-accent desk" href="post-ad.html">+ Post Ad</a>`;
 }
 function mobileLinks(u) {
   return NAV.map(([h, t]) => `<a href="${h}">${t}</a>`).join("") +
-    (u ? `<a href="dashboard.html">My Dashboard</a>${u.role === "admin" ? '<a href="admin.html">Admin Panel</a>' : ""}<a href="#" data-logout>Sign Out</a>`
+    (u ? `<a href="dashboard.html">My Dashboard</a>${isAdminRole(u.role) ? '<a href="admin.html">Admin Panel</a>' : ""}<a href="#" data-logout>Sign Out</a>`
        : `<a class="btn btn-primary" href="login.html">Sign In</a>`) +
     `<a class="btn btn-accent" href="post-ad.html">+ Post Ad</a>`;
 }
@@ -211,11 +214,21 @@ export async function initPage() {
   return getUser();
 }
 
-/* Redirect to login if not signed in (optionally require a role) */
+/* Redirect to login if not signed in (optionally require role or array of roles) */
 export async function requireUser(role) {
   const u = await initPage();
-  if (!u) { location.href = "login.html?next=" + encodeURIComponent(location.pathname.split("/").pop() + location.search); return null; }
-  if (role && u.role !== role) { document.querySelector("main").innerHTML = `<div class="container" style="padding:80px 20px"><div class="empty"><b>Access denied</b>This page is only for ${role}s.</div></div>`; return null; }
+  if (!u) { 
+    location.href = "login.html?next=" + encodeURIComponent(location.pathname.split("/").pop() + location.search); 
+    return null; 
+  }
+  if (role) {
+    const list = Array.isArray(role) ? role : [role];
+    const match = list.includes(u.role) || (list.includes("admin") && isAdminRole(u.role));
+    if (!match) {
+      document.querySelector("main").innerHTML = `<div class="container" style="padding:80px 20px"><div class="empty"><b>Access Denied</b>You do not have permission to view this control panel.<br><br><a class="btn btn-primary" href="index.html">Return to Home</a></div></div>`;
+      return null;
+    }
+  }
   return u;
 }
 

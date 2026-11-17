@@ -1,76 +1,145 @@
 rules_version = '2';
-// Zameen Online — Firestore security rules
-// Paste into Firebase Console → Firestore Database → Rules → Publish
+// ====================================================================
+// Zameen Online — Multi-Tier Enterprise Firestore Security Rules
+// Hierarchy:
+//   1. super_admin   : Full system ownership across all districts
+//   2. admin         : Global operations across Pakistan & AJK
+//   3. district_admin: Scoped to assigned district(s) / cities
+//   4. dealer        : Real estate agency with verified badge & package limits
+//   5. user          : Standard property owner / buyer
+// ====================================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() { return request.auth != null; }
-    function isAdmin() {
-      return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    function signedIn() { 
+      return request.auth != null; 
     }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && getUserDoc().role == 'super_admin';
+    }
+
+    function isGlobalAdmin() {
+      return signedIn() && (getUserDoc().role in ['super_admin', 'admin']);
+    }
+
+    function isDistrictAdmin(city) {
+      return signedIn() && (
+        isGlobalAdmin() ||
+        (getUserDoc().role == 'district_admin' && (
+          (getUserDoc().assignedDistricts is list && city in getUserDoc().assignedDistricts) ||
+          getUserDoc().district == city
+        ))
+      );
+    }
+
     function ownsListing(id) {
       return signedIn() && get(/databases/$(database)/documents/listings/$(id)).data.ownerId == request.auth.uid;
     }
 
-    // ---- Users: people can edit their own name/phone, never their role or package
+    // -------------------------------------------------------------
+    // USERS COLLECTION
+    // -------------------------------------------------------------
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // Users read own profile; admins read all; district admins read local users
+      allow read: if signedIn() && (request.auth.uid == uid || isGlobalAdmin() || getUserDoc().role == 'district_admin');
+
+      // Public registration: can only register as regular user or unverified dealer on Basic plan
       allow create: if signedIn() && request.auth.uid == uid
                     && request.resource.data.role in ['user', 'dealer']
                     && request.resource.data.plan == 'Basic';
-      allow update: if isAdmin()
+
+      // Updates:
+      // 1. Super Admin can update any field (including role, plan, assignedDistricts)
+      // 2. Global Admin can update users, but CANNOT promote to super_admin or alter super_admins
+      // 3. Regular users/dealers can update name, phone, bio, photo, BUT NEVER role, plan, or assignedDistricts
+      allow update: if isSuperAdmin()
+                    || (isGlobalAdmin() && resource.data.role != 'super_admin' && request.resource.data.role != 'super_admin')
                     || (signedIn() && request.auth.uid == uid
-                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'email']));
-      allow delete: if isAdmin();
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'email', 'assignedDistricts']));
+
+      // Only Super Admin can delete user records
+      allow delete: if isSuperAdmin();
     }
 
-    // ---- Listings: public sees approved ads; owners submit/edit as "pending"; admin approves
+    // -------------------------------------------------------------
+    // LISTINGS COLLECTION
+    // -------------------------------------------------------------
     match /listings/{id} {
+      // Public sees approved ads; owners see own ads; district admins see ads in their jurisdiction
       allow read: if resource.data.status == 'approved'
-                  || (signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin()));
+                  || (signedIn() && (
+                      resource.data.ownerId == request.auth.uid 
+                      || isDistrictAdmin(resource.data.city)
+                  ));
+
+      // Regular users submit ads as "pending" with featured == false
+      // Admins can create pre-approved ads directly
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid
-                    && (isAdmin() || (request.resource.data.status == 'pending' && request.resource.data.featured == false));
-      allow update: if isAdmin()
+                    && (isGlobalAdmin() || (request.resource.data.status == 'pending' && request.resource.data.featured == false));
+
+      // Updates:
+      // 1. District Admin (or Global Admin) can moderate ads in their city
+      // 2. Ad Owner can edit their ad (resets to pending)
+      // 3. Public can increment view count by 1
+      allow update: if isDistrictAdmin(resource.data.city)
                     || (signedIn() && resource.data.ownerId == request.auth.uid
                         && request.resource.data.ownerId == request.auth.uid
                         && request.resource.data.status == 'pending'
                         && request.resource.data.featured == resource.data.featured)
-                    // anyone may add exactly one view
                     || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
                         && request.resource.data.views == resource.data.views + 1);
-      allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+
+      // Deletions: District Admin within their city, Global Admin, or ad owner
+      allow delete: if isDistrictAdmin(resource.data.city) 
+                    || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
 
-    // ---- Photos of a listing (kept separately so browsing stays fast)
+    // -------------------------------------------------------------
+    // MEDIA (Thumbs & Photos)
+    // -------------------------------------------------------------
     match /thumbs/{id} {
       allow read: if true;
-      allow write: if isAdmin() || ownsListing(id);
+      allow write: if isGlobalAdmin() || ownsListing(id);
     }
     match /photos/{id} {
       allow read: if true;
-      allow write: if isAdmin() || ownsListing(id);
+      allow write: if isGlobalAdmin() || ownsListing(id);
     }
 
-    // ---- Dealer directory and service providers: public read, admin managed
+    // -------------------------------------------------------------
+    // DEALERS DIRECTORY
+    // -------------------------------------------------------------
     match /dealers/{id} {
       allow read: if true;
-      // a new dealer account may create its own unverified profile
-      allow create: if isAdmin() || (signedIn() && request.auth.uid == id
+      allow create: if isGlobalAdmin() || (signedIn() && request.auth.uid == id
                         && request.resource.data.verified == false && request.resource.data.plan == 'Basic');
-      allow update, delete: if isAdmin();
-    }
-    match /services/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow update: if isDistrictAdmin(resource.data.city);
+      allow delete: if isGlobalAdmin();
     }
 
-    // ---- Inquiries: anyone can send; only the ad owner and admin can read
+    // -------------------------------------------------------------
+    // SERVICES DIRECTORY
+    // -------------------------------------------------------------
+    match /services/{id} {
+      allow read: if true;
+      allow write: if isDistrictAdmin(resource.data.city) || isGlobalAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // BUYER INQUIRIES
+    // -------------------------------------------------------------
     match /inquiries/{id} {
       allow create: if request.resource.data.keys().hasAll(['listingId', 'name', 'phone', 'message'])
                     && request.resource.data.read == false
                     && request.resource.data.message.size() < 2000;
-      allow read, update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
-      allow delete: if isAdmin();
+      allow read, update: if isGlobalAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow delete: if isGlobalAdmin();
     }
   }
 }

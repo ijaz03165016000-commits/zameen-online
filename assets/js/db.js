@@ -24,8 +24,16 @@ function store() {
   try { s = JSON.parse(localStorage.getItem(KEY)); } catch { s = memory[KEY]; }
   if (!s) {
     s = {
-      listings: SEED_LISTINGS, dealers: SEED_DEALERS, services: SEED_SERVICES, inquiries: [],
-      users: [],
+      listings: SEED_LISTINGS, 
+      dealers: SEED_DEALERS, 
+      services: SEED_SERVICES, 
+      inquiries: [],
+      users: [
+        { uid: "admin-1", name: "Ijaz Chaudhry", email: "admin@zameen.online", password: "admin", phone: "+92 344 0807888", role: "super_admin", plan: "Elite", createdAt: Date.now() - 30 * 86400000 },
+        { uid: "dist-1", name: "Raja Farooq (Mirpur)", email: "mirpur@zameen.online", password: "admin", phone: "+92 345 1122334", role: "district_admin", assignedDistricts: ["Mirpur AJK", "Bhimber"], plan: "Basic", createdAt: Date.now() - 15 * 86400000 },
+        { uid: "dealer-1", name: "Kashmir Estate Advisors", email: "dealer@zameen.online", password: "admin", phone: "+92 344 0807888", role: "dealer", plan: "Platinum", createdAt: Date.now() - 10 * 86400000 },
+        { uid: "user-1", name: "Tariq Mehmood", email: "user@zameen.online", password: "user123", phone: "+92 300 9876543", role: "user", plan: "Basic", createdAt: Date.now() - 5 * 86400000 }
+      ],
       session: null
     };
     save(s);
@@ -37,7 +45,15 @@ function save(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* storage full or blocked — keep in memory */ }
 }
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-const publicUser = u => u && ({ uid: u.uid, name: u.name, email: u.email, phone: u.phone, role: u.role, plan: u.plan || "Basic" });
+const publicUser = u => u && ({
+  uid: u.uid,
+  name: u.name,
+  email: u.email,
+  phone: u.phone,
+  role: u.role || "user",
+  plan: u.plan || "Basic",
+  assignedDistricts: Array.isArray(u.assignedDistricts) ? u.assignedDistricts : (u.district ? [u.district] : [])
+});
 
 /* ---------------------------------------------------------
    Init
@@ -55,7 +71,15 @@ async function initLive() {
       if (fbUser) {
         const snap = await fs.getDoc(fs.doc(db, "users", fbUser.uid));
         const p = snap.exists() ? snap.data() : {};
-        currentUser = { uid: fbUser.uid, email: fbUser.email, name: p.name || fbUser.displayName || fbUser.email, phone: p.phone || "", role: p.role || "user", plan: p.plan || "Basic" };
+        currentUser = { 
+          uid: fbUser.uid, 
+          email: fbUser.email, 
+          name: p.name || fbUser.displayName || fbUser.email, 
+          phone: p.phone || "", 
+          role: p.role || "user", 
+          plan: p.plan || "Basic",
+          assignedDistricts: Array.isArray(p.assignedDistricts) ? p.assignedDistricts : (p.district ? [p.district] : [])
+        };
       } else currentUser = null;
       authListeners.forEach(cb => cb(currentUser));
       resolve(currentUser);
@@ -252,6 +276,52 @@ export async function getUsers() {
 export async function updateUser(id, data) {
   if (LIVE) return fs.updateDoc(fs.doc(db, "users", id), data);
   const s = store(); const u = s.users.find(u => u.uid === id); if (u) Object.assign(u, data); save(s);
+}
+
+/* Multi-Tier Role checks & Moderation */
+export const isSuperAdmin = u => (u || currentUser)?.role === "super_admin";
+export const isGlobalAdmin = u => ["super_admin", "admin"].includes((u || currentUser)?.role);
+export const isDistrictAdmin = (city, u) => {
+  const user = u || currentUser;
+  if (!user) return false;
+  if (isGlobalAdmin(user)) return true;
+  if (user.role === "district_admin") {
+    const list = user.assignedDistricts || [];
+    return list.includes(city);
+  }
+  return false;
+};
+
+export async function approveListing(id, note = "") {
+  const u = currentUser;
+  const modData = {
+    status: "approved",
+    moderatedBy: u?.uid || "admin",
+    moderatedByName: u?.name || "Admin",
+    moderatedAt: Date.now(),
+    moderationNote: note || "Approved"
+  };
+  return updateListing(id, modData);
+}
+
+export async function rejectListing(id, reason = "") {
+  const u = currentUser;
+  const modData = {
+    status: "rejected",
+    moderatedBy: u?.uid || "admin",
+    moderatedByName: u?.name || "Admin",
+    moderatedAt: Date.now(),
+    moderationNote: reason || "Rejected by moderator"
+  };
+  return updateListing(id, modData);
+}
+
+export async function setUserRole(uid, { role, assignedDistricts, plan }) {
+  const updates = {};
+  if (role) updates.role = role;
+  if (assignedDistricts !== undefined) updates.assignedDistricts = assignedDistricts;
+  if (plan) updates.plan = plan;
+  return updateUser(uid, updates);
 }
 export async function updateProfile(data) {
   if (!currentUser) return;

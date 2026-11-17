@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel | Zameen Online</title>
+  <title>Admin &amp; Regional Control Panel | Zameen Online</title>
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#1a3f8f">
   <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
@@ -13,17 +13,35 @@
 <body>
 <div id="site-header"></div>
 <main>
-  <section class="page-hero"><div class="container"><h1>Admin Panel</h1><p>Approve ads, manage dealers, services and users</p></div></section>
+  <section class="page-hero">
+    <div class="container">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
+        <div>
+          <h1>Control Panel</h1>
+          <p id="hero-subtitle">Multi-tier administrative &amp; regional property management</p>
+        </div>
+        <div id="admin-user-pill"></div>
+      </div>
+    </div>
+  </section>
+
   <div class="container dash">
-    <nav class="dash-nav" id="tabs">
-      <button data-tab="overview" class="active">Overview</button>
-      <button data-tab="pending">Pending Ads <span class="count hidden" id="pending-count"></span></button>
-      <button data-tab="ads">All Ads</button>
-      <button data-tab="dealers">Dealers</button>
-      <button data-tab="services">Services</button>
-      <button data-tab="inquiries">Inquiries</button>
-      <button data-tab="users">Users</button>
-    </nav>
+    <aside>
+      <div class="district-box" id="district-filter-container" style="margin-bottom:16px;">
+        <label for="district-selector">📍 Scope / District:</label>
+        <select id="district-selector" style="width:100%"></select>
+      </div>
+
+      <nav class="dash-nav" id="tabs">
+        <button data-tab="overview" class="active">Overview</button>
+        <button data-tab="pending">Pending Ads <span class="count hidden" id="pending-count"></span></button>
+        <button data-tab="ads">All Ads</button>
+        <button data-tab="dealers">Dealers</button>
+        <button data-tab="services">Services</button>
+        <button data-tab="inquiries">Inquiries</button>
+        <button data-tab="users" id="tab-users-btn">Users &amp; Roles</button>
+      </nav>
+    </aside>
     <section id="panel"></section>
   </div>
 </main>
