@@ -167,7 +167,6 @@ export async function adminCreateAccount({ name, email, password, phone, role = 
 
     const tempApp = appMod.initializeApp(firebaseConfig, "TempAdminCreateUserApp_" + Math.random().toString(36).slice(2, 9));
     const tempAuth = fa.getAuth(tempApp);
-    const tempDb = fs.getFirestore(tempApp);
 
     try {
       const cred = await fa.createUserWithEmailAndPassword(tempAuth, email, password);
@@ -176,24 +175,21 @@ export async function adminCreateAccount({ name, email, password, phone, role = 
       }
       const newUid = cred.user.uid;
 
-      // 1. Write user document using tempDb (authenticated as newUid)
-      // Under initial Firestore security rules:
-      // allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role in ['user', 'dealer'] && request.resource.data.plan == 'Basic';
+      // 1. Write user document
       const userDoc = {
         name: name || "Member",
         email: email,
         phone: phone || "",
         role: role === "dealer" ? "dealer" : "user",
-        plan: "Basic",
+        plan: plan || "Basic",
         city: city || "Mirpur AJK",
+        assignedDistricts: role === "district_admin" ? (assignedDistricts?.length ? assignedDistricts : [city || "Mirpur AJK"]) : [],
         createdAt: fs.serverTimestamp(),
         createdByAdmin: currentUser?.uid || "admin"
       };
-      await fs.setDoc(fs.doc(tempDb, "users", newUid), userDoc);
+      await fs.setDoc(fs.doc(db, "users", newUid), userDoc);
 
-      // 2. Write dealer document using tempDb (authenticated as newUid)
-      // Under initial Firestore security rules:
-      // allow create: if isAdmin() || (signedIn() && request.auth.uid == id && request.resource.data.verified == false && request.resource.data.plan == 'Basic');
+      // 2. Write dealer document if dealer role
       if (role === "dealer") {
         const dealerDoc = {
           name: agencyName || name || "Real Estate Agency",
@@ -201,32 +197,29 @@ export async function adminCreateAccount({ name, email, password, phone, role = 
           city: city || "Mirpur AJK",
           phone: phone || "",
           whatsapp: phone ? String(phone).replace(/\D/g, "").replace(/^0/, "92") : "",
-          verified: false,
-          plan: "Basic",
+          verified: !!verified,
+          plan: plan || "Basic",
           about: "Official registered real estate dealer on Zameen Online.",
           listings: 0,
           createdAt: fs.serverTimestamp()
         };
-        await fs.setDoc(fs.doc(tempDb, "dealers", newUid), dealerDoc);
-      }
-
-      // 3. Try to merge upgraded plan and verified status using admin db credentials (non-blocking)
-      if (plan && plan !== "Basic") {
-        await fs.setDoc(fs.doc(db, "dealers", newUid), { plan, verified: !!verified }, { merge: true }).catch(() => {});
-        await fs.setDoc(fs.doc(db, "users", newUid), { plan }, { merge: true }).catch(() => {});
+        await fs.setDoc(fs.doc(db, "dealers", newUid), dealerDoc);
       }
 
       await fa.signOut(tempAuth);
-      return { uid: newUid, ...userDoc, plan: plan || "Basic", verified: !!verified };
-    } catch (authErr) {
-      if (authErr.code === "auth/email-already-in-use") {
+      return { uid: newUid, ...userDoc };
+    } catch (err) {
+      if (err.code === "permission-denied" || (err.message && err.message.toLowerCase().includes("permission"))) {
+        throw new Error("Firestore permission blocked by Google Cloud. Please publish the updated security rules in Firebase Console.");
+      }
+      if (err.code === "auth/email-already-in-use") {
         throw new Error(`The email "${email}" is already registered. If this user already has an account, you can find them in the "Users & Roles" tab and click "Manage Role".`);
-      } else if (authErr.code === "auth/weak-password") {
+      } else if (err.code === "auth/weak-password") {
         throw new Error("Password must be at least 6 characters.");
-      } else if (authErr.code === "auth/invalid-email") {
+      } else if (err.code === "auth/invalid-email") {
         throw new Error("Invalid email address format.");
       }
-      throw authErr;
+      throw err;
     } finally {
       try {
         await appMod.deleteApp(tempApp);
