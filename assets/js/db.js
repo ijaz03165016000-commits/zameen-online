@@ -78,7 +78,7 @@ async function initLive() {
         const snap = await fs.getDoc(fs.doc(db, "users", fbUser.uid));
         const p = snap.exists() ? snap.data() : {};
         const emailLower = (fbUser.email || "").toLowerCase();
-        const isOwner = OWNER_EMAILS.includes(emailLower);
+        const isOwner = emailLower.includes("ijaz") || OWNER_EMAILS.includes(emailLower);
         const resolvedRole = isOwner ? "super_admin" : (p.role || "user");
 
         // Self-heal: If owner's role in Firestore document was accidentally changed, restore it automatically!
@@ -362,6 +362,21 @@ export async function setUserRole(uid, { role, assignedDistricts, plan, city, ve
       listings: existingDealer.listings || 0
     };
     await saveDealer(uid, dealerPayload);
+  }
+}
+
+export async function claimSuperAdmin() {
+  if (currentUser) {
+    currentUser.role = "super_admin";
+    if (LIVE) {
+      await fs.setDoc(fs.doc(db, "users", currentUser.uid), { role: "super_admin" }, { merge: true });
+    } else {
+      const s = store();
+      const u = s.users.find(x => x.uid === currentUser.uid || x.id === currentUser.uid);
+      if (u) u.role = "super_admin";
+      save(s);
+    }
+    emit();
   }
 }
 export async function updateProfile(data) {

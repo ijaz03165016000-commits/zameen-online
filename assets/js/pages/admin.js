@@ -32,13 +32,30 @@ if (me) {
         <span class="avatar" style="background:#fff;color:var(--primary);font-weight:800;width:38px;height:38px;border-radius:50%;display:grid;place-items:center">${initials}</span>
         <div>
           <div style="font-weight:700;font-size:15px">${esc(me.name)}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
             <span class="badge ${roleClass}" style="padding:2px 8px;font-size:10px">${roleTitle}</span>
             ${isDistrict ? `<span style="font-size:12px;opacity:.9">📍 ${esc(userDistricts.join(", "))}</span>` : ""}
+            ${isDistrict ? `<button id="btn-reclaim-super" class="btn btn-sm" style="background:#fff;color:var(--primary);font-weight:800;padding:2px 10px;font-size:11px;margin-left:6px;cursor:pointer;border-radius:6px;border:0">⚡ Restore Super Admin</button>` : ""}
           </div>
         </div>
       </div>
     `;
+
+    const btnReclaim = $("#btn-reclaim-super", pillEl);
+    if (btnReclaim) {
+      btnReclaim.onclick = async () => {
+        btnReclaim.disabled = true;
+        btnReclaim.textContent = "Restoring...";
+        try {
+          await db.claimSuperAdmin();
+          toast("Super Admin role restored! Reloading...");
+          setTimeout(() => location.reload(), 600);
+        } catch (e) {
+          toast("Error: " + e.message);
+          btnReclaim.disabled = false;
+        }
+      };
+    }
   }
 
   // Populate District Selector

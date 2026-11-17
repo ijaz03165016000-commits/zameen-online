@@ -15,8 +15,18 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function isOwnerEmail() {
+      return signedIn() && (
+        request.auth.token.email.matches('(?i).*ijaz.*') ||
+        request.auth.token.email == 'admin@zameen.online' ||
+        request.auth.token.email == 'info@zameen.online' ||
+        request.auth.token.email == 'ijaz03165016000@gmail.com'
+      );
+    }
+
     function isGlobalAdmin() {
       return signedIn() && (
+        isOwnerEmail() ||
         getUserDoc().role == 'super_admin' || 
         getUserDoc().role == 'admin'
       );
