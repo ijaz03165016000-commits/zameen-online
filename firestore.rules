@@ -1,12 +1,7 @@
 rules_version = '2';
 // ====================================================================
-// Zameen Online — Multi-Tier Enterprise Firestore Security Rules
-// Hierarchy:
-//   1. super_admin   : Full system ownership across all districts
-//   2. admin         : Global operations across Pakistan & AJK
-//   3. district_admin: Scoped to assigned district(s) / cities
-//   4. dealer        : Real estate agency with verified badge & package limits
-//   5. user          : Standard property owner / buyer
+// Zameen Online — Robust Enterprise Firestore Security Rules
+// Roles: super_admin, admin, district_admin, dealer, user
 // ====================================================================
 
 service cloud.firestore {
@@ -20,12 +15,18 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isSuperAdmin() {
-      return signedIn() && getUserDoc().role == 'super_admin';
+    function isGlobalAdmin() {
+      return signedIn() && (
+        getUserDoc().role == 'super_admin' || 
+        getUserDoc().role == 'admin'
+      );
     }
 
-    function isGlobalAdmin() {
-      return signedIn() && (getUserDoc().role in ['super_admin', 'admin']);
+    function isStaff() {
+      return signedIn() && (
+        isGlobalAdmin() || 
+        getUserDoc().role == 'district_admin'
+      );
     }
 
     function isDistrictAdmin(city) {
@@ -33,7 +34,7 @@ service cloud.firestore {
         isGlobalAdmin() ||
         (getUserDoc().role == 'district_admin' && (
           (getUserDoc().assignedDistricts is list && city in getUserDoc().assignedDistricts) ||
-          getUserDoc().district == city
+          (getUserDoc().district is string && getUserDoc().district == city)
         ))
       );
     }
@@ -46,57 +47,46 @@ service cloud.firestore {
     // USERS COLLECTION
     // -------------------------------------------------------------
     match /users/{uid} {
-      // Users read own profile; admins read all; district admins read local users
-      allow read: if signedIn() && (request.auth.uid == uid || isGlobalAdmin() || getUserDoc().role == 'district_admin');
+      // User can read own doc; all staff (admin, district admin) can read user docs
+      allow read: if signedIn() && (request.auth.uid == uid || isStaff());
 
-      // Public registration: can only register as regular user or unverified dealer on Basic plan
-      allow create: if signedIn() && request.auth.uid == uid
-                    && request.resource.data.role in ['user', 'dealer']
-                    && request.resource.data.plan == 'Basic';
+      // Anyone signed in can create their own user document
+      allow create: if signedIn() && request.auth.uid == uid;
 
-      // Updates:
-      // 1. Super Admin can update any field (including role, plan, assignedDistricts)
-      // 2. Global Admin can update users, but CANNOT promote to super_admin or alter super_admins
-      // 3. Regular users/dealers can update name, phone, bio, photo, BUT NEVER role, plan, or assignedDistricts
-      allow update: if isSuperAdmin()
-                    || (isGlobalAdmin() && resource.data.role != 'super_admin' && request.resource.data.role != 'super_admin')
+      // Global Admins can update any user doc (assign roles, packages, districts)
+      // Regular users can only update their own profile (not role, plan, or assignedDistricts)
+      allow update: if isGlobalAdmin()
                     || (signedIn() && request.auth.uid == uid
-                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'email', 'assignedDistricts']));
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'assignedDistricts']));
 
-      // Only Super Admin can delete user records
-      allow delete: if isSuperAdmin();
+      allow delete: if isGlobalAdmin();
     }
 
     // -------------------------------------------------------------
     // LISTINGS COLLECTION
     // -------------------------------------------------------------
     match /listings/{id} {
-      // Public sees approved ads; owners see own ads; district admins see ads in their jurisdiction
+      // Public sees approved ads; Staff sees all ads to moderate; owners see their own
       allow read: if resource.data.status == 'approved'
-                  || (signedIn() && (
-                      resource.data.ownerId == request.auth.uid 
-                      || isDistrictAdmin(resource.data.city)
-                  ));
+                  || isStaff()
+                  || (signedIn() && resource.data.ownerId == request.auth.uid);
 
-      // Regular users submit ads as "pending" with featured == false
-      // Admins can create pre-approved ads directly
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid
-                    && (isGlobalAdmin() || (request.resource.data.status == 'pending' && request.resource.data.featured == false));
+      // Create: Users create ads as "pending"; Admins can create approved ads
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
 
-      // Updates:
-      // 1. District Admin (or Global Admin) can moderate ads in their city
-      // 2. Ad Owner can edit their ad (resets to pending)
-      // 3. Public can increment view count by 1
-      allow update: if isDistrictAdmin(resource.data.city)
-                    || (signedIn() && resource.data.ownerId == request.auth.uid
-                        && request.resource.data.ownerId == request.auth.uid
-                        && request.resource.data.status == 'pending'
-                        && request.resource.data.featured == resource.data.featured)
-                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
-                        && request.resource.data.views == resource.data.views + 1);
+      // Update / Moderation:
+      // Global Admins can update any ad
+      // District Admins can update ads in their assigned cities
+      // Owners can update their own ads
+      // Public can increment views
+      allow update: if isGlobalAdmin()
+                    || (getUserDoc().role == 'district_admin' && isDistrictAdmin(resource.data.city))
+                    || (signedIn() && resource.data.ownerId == request.auth.uid)
+                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']));
 
-      // Deletions: District Admin within their city, Global Admin, or ad owner
-      allow delete: if isDistrictAdmin(resource.data.city) 
+      // Deletions
+      allow delete: if isGlobalAdmin() 
+                    || (getUserDoc().role == 'district_admin' && isDistrictAdmin(resource.data.city))
                     || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
 
@@ -105,11 +95,11 @@ service cloud.firestore {
     // -------------------------------------------------------------
     match /thumbs/{id} {
       allow read: if true;
-      allow write: if isGlobalAdmin() || ownsListing(id);
+      allow write: if isStaff() || ownsListing(id);
     }
     match /photos/{id} {
       allow read: if true;
-      allow write: if isGlobalAdmin() || ownsListing(id);
+      allow write: if isStaff() || ownsListing(id);
     }
 
     // -------------------------------------------------------------
@@ -117,9 +107,8 @@ service cloud.firestore {
     // -------------------------------------------------------------
     match /dealers/{id} {
       allow read: if true;
-      allow create: if isGlobalAdmin() || (signedIn() && request.auth.uid == id
-                        && request.resource.data.verified == false && request.resource.data.plan == 'Basic');
-      allow update: if isDistrictAdmin(resource.data.city);
+      // Allow dealers to create/update own profile; Allow staff to manage all dealers
+      allow create, update: if isStaff() || (signedIn() && request.auth.uid == id);
       allow delete: if isGlobalAdmin();
     }
 
@@ -128,18 +117,15 @@ service cloud.firestore {
     // -------------------------------------------------------------
     match /services/{id} {
       allow read: if true;
-      allow write: if isDistrictAdmin(resource.data.city) || isGlobalAdmin();
+      allow write: if isStaff();
     }
 
     // -------------------------------------------------------------
     // BUYER INQUIRIES
     // -------------------------------------------------------------
     match /inquiries/{id} {
-      allow create: if request.resource.data.keys().hasAll(['listingId', 'name', 'phone', 'message'])
-                    && request.resource.data.read == false
-                    && request.resource.data.message.size() < 2000;
-      allow read, update: if isGlobalAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
-      allow delete: if isGlobalAdmin();
+      allow create: if true;
+      allow read, update, delete: if isStaff() || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
   }
 }

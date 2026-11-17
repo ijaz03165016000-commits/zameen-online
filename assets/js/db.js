@@ -274,12 +274,12 @@ export async function getUsers() {
   return store().users.map(u => ({ id: u.uid, ...publicUser(u), createdAt: u.createdAt }));
 }
 export async function updateUser(id, data) {
-  if (LIVE) return fs.updateDoc(fs.doc(db, "users", id), data);
-  const s = store(); const u = s.users.find(u => u.uid === id); if (u) Object.assign(u, data); save(s);
+  if (LIVE) return fs.setDoc(fs.doc(db, "users", id), data, { merge: true });
+  const s = store(); const u = s.users.find(u => u.uid === id || u.id === id); if (u) Object.assign(u, data); save(s);
 }
 
 /* Multi-Tier Role checks & Moderation */
-export const isSuperAdmin = u => (u || currentUser)?.role === "super_admin";
+export const isSuperAdmin = u => ["super_admin", "admin"].includes((u || currentUser)?.role);
 export const isGlobalAdmin = u => ["super_admin", "admin"].includes((u || currentUser)?.role);
 export const isDistrictAdmin = (city, u) => {
   const user = u || currentUser;
@@ -316,12 +316,38 @@ export async function rejectListing(id, reason = "") {
   return updateListing(id, modData);
 }
 
-export async function setUserRole(uid, { role, assignedDistricts, plan }) {
-  const updates = {};
-  if (role) updates.role = role;
-  if (assignedDistricts !== undefined) updates.assignedDistricts = assignedDistricts;
-  if (plan) updates.plan = plan;
-  return updateUser(uid, updates);
+export async function setUserRole(uid, { role, assignedDistricts, plan, city, verified, agencyName }) {
+  const updates = {
+    role: role || "user",
+    plan: plan || "Basic",
+    updatedAt: Date.now()
+  };
+  if (assignedDistricts !== undefined) {
+    updates.assignedDistricts = Array.isArray(assignedDistricts) ? assignedDistricts : [assignedDistricts];
+  }
+  if (city) updates.city = city;
+
+  // 1. Update/merge user document in users collection
+  await updateUser(uid, updates);
+
+  // 2. If assigning dealer role, ensure document in 'dealers' collection exists and is synced!
+  if (role === "dealer") {
+    const userDoc = (await get("users", uid)) || {};
+    const existingDealer = (await getDealer(uid)) || {};
+    
+    const dealerPayload = {
+      name: agencyName || existingDealer.name || userDoc.name || "Dealer Agency",
+      owner: existingDealer.owner || userDoc.name || "",
+      city: city || existingDealer.city || (updates.assignedDistricts?.[0]) || "Mirpur AJK",
+      phone: existingDealer.phone || userDoc.phone || "",
+      whatsapp: existingDealer.whatsapp || (userDoc.phone ? String(userDoc.phone).replace(/\D/g, "").replace(/^0/, "92") : ""),
+      verified: verified !== undefined ? !!verified : (existingDealer.verified || false),
+      plan: plan || userDoc.plan || "Basic",
+      about: existingDealer.about || "",
+      listings: existingDealer.listings || 0
+    };
+    await saveDealer(uid, dealerPayload);
+  }
 }
 export async function updateProfile(data) {
   if (!currentUser) return;

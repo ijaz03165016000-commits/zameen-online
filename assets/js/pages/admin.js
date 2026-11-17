@@ -5,8 +5,8 @@ import { SERVICE_CATEGORIES, PACKAGES, CITIES } from "../seed.js";
 const me = await requireUser(["super_admin", "admin", "district_admin"]);
 
 if (me) {
-  const isSuper = me.role === "super_admin";
-  const isGlobal = isSuper || me.role === "admin";
+  const isSuper = me.role === "super_admin" || me.role === "admin";
+  const isGlobal = isSuper;
   const isDistrict = me.role === "district_admin";
 
   // Flattened list of all cities across AJK and Pakistan
@@ -358,6 +358,11 @@ if (me) {
     const currentPlan = target.plan || "Basic";
     const currentDistricts = Array.isArray(target.assignedDistricts) ? target.assignedDistricts : [];
 
+    const existingDealer = cache.dealers.find(d => d.id === userId) || {};
+    const currentAgencyName = existingDealer.name || target.name || "";
+    const currentCity = existingDealer.city || (currentDistricts[0] || "Mirpur AJK");
+    const isVerified = !!existingDealer.verified;
+
     const m = modal(`
       <h3>Manage User Permissions: ${esc(target.name)}</h3>
       <form id="role-form">
@@ -372,12 +377,40 @@ if (me) {
           </select>
         </div>
 
+        <!-- Dealer Specific Fields -->
+        <div id="dealer-assign-box" style="${currentRole === 'dealer' ? '' : 'display:none'}">
+          <div class="form-group">
+            <label>Agency Name</label>
+            <input class="field" name="agencyName" placeholder="e.g. Kashmir Estate Advisors" value="${esc(currentAgencyName)}">
+          </div>
+          <div class="form-group">
+            <label>Operating City / Headquarters</label>
+            <select class="field" name="dealerCity">
+              ${cityOptions(currentCity, "")}
+            </select>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;margin:14px 0 18px;font-weight:700;cursor:pointer">
+            <input type="checkbox" name="verified" ${isVerified ? "checked" : ""}>
+            <span style="color:#166534">✓ Grant "Verified Dealer" Badge</span>
+          </label>
+        </div>
+
+        <!-- District Admin Specific Fields -->
         <div class="form-group" id="district-assign-box" style="${currentRole === 'district_admin' ? '' : 'display:none'}">
-          <label>Assign Districts / Cities</label>
-          <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:#f9fbfd">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <label style="margin:0">Assign Districts / Cities</label>
+            <div style="font-size:11px;display:flex;gap:6px">
+              <a href="#" id="sel-all-ajk" style="color:var(--primary);font-weight:700">+ All AJK</a>
+              <span>·</span>
+              <a href="#" id="sel-all-pak" style="color:var(--primary);font-weight:700">+ All Pakistan</a>
+              <span>·</span>
+              <a href="#" id="clear-dist" style="color:#ef4444;font-weight:700">Clear</a>
+            </div>
+          </div>
+          <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:#f9fbfd" id="districts-checklist">
             ${ALL_CITIES.map(c => `
               <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;cursor:pointer">
-                <input type="checkbox" name="districts" value="${esc(c)}" ${currentDistricts.includes(c) ? "checked" : ""}>
+                <input type="checkbox" name="districts" value="${esc(c)}" data-region="${(CITIES['Azad Kashmir']||[]).includes(c) ? 'ajk' : 'pak'}" ${currentDistricts.includes(c) ? "checked" : ""}>
                 ${esc(c)}
               </label>
             `).join("")}
@@ -388,7 +421,7 @@ if (me) {
         <div class="form-group" id="plan-assign-box">
           <label>Membership / Package Plan</label>
           <select class="field" name="plan">
-            ${PACKAGES.map(p => `<option value="${p.name}" ${p.name === currentPlan ? "selected" : ""}>${p.name} (${p.price ? 'PKR ' + p.price.toLocaleString() : 'Free'})</option>`).join("")}
+            ${PACKAGES.map(p => `<option value="${p.name}" ${p.name === currentPlan ? "selected" : ""}>${p.name} (${p.ads} Ads · ${p.price ? 'PKR ' + p.price.toLocaleString() : 'Free'})</option>`).join("")}
           </select>
         </div>
 
@@ -401,9 +434,25 @@ if (me) {
 
     const rSelect = $("#role-select", m);
     const dBox = $("#district-assign-box", m);
+    const dealerBox = $("#dealer-assign-box", m);
 
     rSelect.onchange = () => {
-      dBox.style.display = rSelect.value === "district_admin" ? "block" : "none";
+      const r = rSelect.value;
+      dBox.style.display = r === "district_admin" ? "block" : "none";
+      dealerBox.style.display = r === "dealer" ? "block" : "none";
+    };
+
+    $("#sel-all-ajk", m).onclick = e => {
+      e.preventDefault();
+      $$('#districts-checklist input[data-region="ajk"]', m).forEach(cb => cb.checked = true);
+    };
+    $("#sel-all-pak", m).onclick = e => {
+      e.preventDefault();
+      $$('#districts-checklist input[data-region="pak"]', m).forEach(cb => cb.checked = true);
+    };
+    $("#clear-dist", m).onclick = e => {
+      e.preventDefault();
+      $$('#districts-checklist input', m).forEach(cb => cb.checked = false);
     };
 
     $("#role-form", m).onsubmit = async e => {
@@ -412,14 +461,20 @@ if (me) {
       const selectedRole = f.get("role");
       const selectedPlan = f.get("plan");
       const selectedDistricts = f.getAll("districts");
+      const agencyName = f.get("agencyName");
+      const dealerCity = f.get("dealerCity");
+      const verified = f.get("verified") === "on";
 
       try {
         await db.setUserRole(userId, {
           role: selectedRole,
           plan: selectedPlan,
-          assignedDistricts: selectedRole === "district_admin" ? selectedDistricts : []
+          assignedDistricts: selectedRole === "district_admin" ? selectedDistricts : [],
+          agencyName,
+          city: dealerCity,
+          verified
         });
-        toast("Permissions updated successfully");
+        toast("Role and permissions updated successfully!");
         m.remove();
         await refresh();
       } catch (err) {
