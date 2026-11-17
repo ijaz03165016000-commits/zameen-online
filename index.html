@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zameen Online - AJK &amp; Pakistan Premier Property Portal | Powered by Ijazs.online</title>
+  <meta name="description" content="Find houses, plots, apartments and commercial properties for sale and rent across Azad Kashmir and Pakistan. Zameen Online - your trusted real estate partner.">
+  <meta name="theme-color" content="#1a3f8f">
+  <meta property="og:title" content="Zameen Online - AJK & Pakistan Property Portal">
+  <meta property="og:description" content="Houses, plots, apartments and commercial properties for sale and rent in Mirpur, Muzaffarabad, Rawalakot, Islamabad, Lahore and more.">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=1200">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge"><span class="star">★</span> Pakistan's Most Trusted Property Portal — www.zameen.online</div>
+      <h1>Find Your Perfect <span class="hl">Property</span> in Pakistan</h1>
+      <p class="lead">Explore thousands of houses, plots, apartments and commercial spaces for sale and rent across Azad Kashmir and Pakistan.</p>
+      <form class="search-card" id="hero-search">
+        <div class="tabs" role="tablist">
+          <button type="button" class="active" data-purpose="sale">Buy</button>
+          <button type="button" data-purpose="rent">Rent</button>
+        </div>
+        <div class="search-grid">
+          <input class="field" name="q" placeholder="Search by location, society or keyword...">
+          <select class="field" name="city" id="hero-city"></select>
+          <select class="field" name="type" id="hero-type"></select>
+          <button class="btn btn-primary btn-lg" type="submit">Search</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats">
+    <div class="container stats-grid">
+      <div class="stat"><b>50,000+</b><span>Active Listings</span></div>
+      <div class="stat"><b>500K+</b><span>Registered Users</span></div>
+      <div class="stat"><b>8,000+</b><span>Verified Dealers</span></div>
+      <div class="stat"><b>50+</b><span>Cities Covered</span></div>
+    </div>
+  </section>
+
+  <!-- PROPERTY TYPES -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head"><h2>Browse by Property Type</h2><p>Find the perfect property type that suits your needs</p></div>
+      <div class="type-grid" id="type-grid"></div>
+    </div>
+  </section>
+
+  <!-- FEATURED -->
+  <section class="section alt">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Featured Properties</span><h2>Hand-Picked Properties</h2></div>
+      <div class="prop-grid" id="featured"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      <div class="section-foot"><a class="btn btn-primary btn-lg" href="listings.html">View All Properties</a></div>
+    </div>
+  </section>
+
+  <!-- CITIES -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Browse by City</span><h2>Find Properties in Top Cities</h2><p>Azad Kashmir &amp; major Pakistani cities — all in one place</p></div>
+      <div class="city-grid" id="city-grid"></div>
+    </div>
+  </section>
+
+  <!-- AJK -->
+  <section class="section ajk-band">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Azad Kashmir — Jannat Nazeer</span><h2>Discover the Beauty of AJK</h2><p>From the mighty Mangla Dam to the lush forests of Neelum Valley — own your piece of paradise in Azad Kashmir</p></div>
+      <div class="gallery">
+        <figure><img src="https://images.unsplash.com/photo-1711554978131-d0d5a960a90e?w=1000" alt="Mangla Dam" loading="lazy"><figcaption><b>Mangla Dam</b>The majestic Mangla Reservoir — Mirpur AJK</figcaption></figure>
+        <figure><img src="https://images.unsplash.com/photo-1621232082074-1a7750ecc557?w=800" alt="Neelum Valley" loading="lazy"><figcaption><b>Neelum Valley</b>Lush green forests of Neelum Valley</figcaption></figure>
+        <figure><img src="https://images.unsplash.com/photo-1661667554227-6bbb8d8f3e8d?w=800" alt="Mountains of AJK" loading="lazy"><figcaption><b>Mountains of AJK</b>Snow-capped peaks of Muzaffarabad</figcaption></figure>
+        <figure><img src="https://images.unsplash.com/photo-1710609942195-b9dab8f48fc6?w=1000" alt="Neelum River" loading="lazy"><figcaption><b>Neelum River</b>Crystal-clear rivers winding through Kashmir</figcaption></figure>
+      </div>
+      <div class="section-foot"><a class="btn btn-white btn-lg" href="listings.html?region=ajk">Browse AJK Properties</a></div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Property Services</span><h2>Everything Your Property Needs</h2><p>Find property professionals, maintenance experts and trusted services in your area.</p></div>
+      <div class="service-grid" id="service-grid"></div>
+      <div class="section-foot"><a class="btn btn-outline btn-lg" href="services.html">Explore Property Services</a></div>
+    </div>
+  </section>
+
+  <!-- DEALER CTA -->
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <div class="cta">
+        <div>
+          <span class="eyebrow">Grow Your Business</span>
+          <h2>Are You a Property Dealer?</h2>
+          <p>Join 8,000+ verified dealers on Zameen Online. Post up to 800+ ads with our Elite package. Reach millions of buyers and renters across Pakistan.</p>
+          <div class="actions"><a class="btn btn-white btn-lg" href="packages.html">View Dealer Packages</a><a class="btn btn-outline-w btn-lg" href="dealers.html">Browse Dealers</a></div>
+        </div>
+        <ul>
+          <li>Post up to 800+ property ads</li>
+          <li>Verified dealer badge</li>
+          <li>Priority listing placement</li>
+          <li>Dedicated account manager</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="site-footer"></div>
+<script type="module" src="assets/js/pages/home.js"></script>
+</body>
+</html>

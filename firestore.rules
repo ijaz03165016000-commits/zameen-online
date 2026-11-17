@@ -1,0 +1,76 @@
+rules_version = '2';
+// Zameen Online — Firestore security rules
+// Paste into Firebase Console → Firestore Database → Rules → Publish
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function ownsListing(id) {
+      return signedIn() && get(/databases/$(database)/documents/listings/$(id)).data.ownerId == request.auth.uid;
+    }
+
+    // ---- Users: people can edit their own name/phone, never their role or package
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role in ['user', 'dealer']
+                    && request.resource.data.plan == 'Basic';
+      allow update: if isAdmin()
+                    || (signedIn() && request.auth.uid == uid
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'email']));
+      allow delete: if isAdmin();
+    }
+
+    // ---- Listings: public sees approved ads; owners submit/edit as "pending"; admin approves
+    match /listings/{id} {
+      allow read: if resource.data.status == 'approved'
+                  || (signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin()));
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid
+                    && (isAdmin() || (request.resource.data.status == 'pending' && request.resource.data.featured == false));
+      allow update: if isAdmin()
+                    || (signedIn() && resource.data.ownerId == request.auth.uid
+                        && request.resource.data.ownerId == request.auth.uid
+                        && request.resource.data.status == 'pending'
+                        && request.resource.data.featured == resource.data.featured)
+                    // anyone may add exactly one view
+                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
+                        && request.resource.data.views == resource.data.views + 1);
+      allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
+    // ---- Photos of a listing (kept separately so browsing stays fast)
+    match /thumbs/{id} {
+      allow read: if true;
+      allow write: if isAdmin() || ownsListing(id);
+    }
+    match /photos/{id} {
+      allow read: if true;
+      allow write: if isAdmin() || ownsListing(id);
+    }
+
+    // ---- Dealer directory and service providers: public read, admin managed
+    match /dealers/{id} {
+      allow read: if true;
+      // a new dealer account may create its own unverified profile
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == id
+                        && request.resource.data.verified == false && request.resource.data.plan == 'Basic');
+      allow update, delete: if isAdmin();
+    }
+    match /services/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- Inquiries: anyone can send; only the ad owner and admin can read
+    match /inquiries/{id} {
+      allow create: if request.resource.data.keys().hasAll(['listingId', 'name', 'phone', 'message'])
+                    && request.resource.data.read == false
+                    && request.resource.data.message.size() < 2000;
+      allow read, update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+  }
+}

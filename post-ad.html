@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post a Property Ad | Zameen Online</title>
+  <meta name="theme-color" content="#1a3f8f">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="page-hero">
+    <div class="container">
+      <div class="crumbs"><a href="index.html">Home</a> › Post an Ad</div>
+      <h1 id="h">Post Your Property Ad</h1>
+      <p>Reach thousands of buyers and tenants across AJK and Pakistan — free</p>
+    </div>
+  </section>
+  <div class="container" style="padding:32px 20px 70px;max-width:900px">
+    <form class="form-card" id="ad-form">
+      <div class="msg"></div>
+      <h2>1. Purpose &amp; type</h2>
+      <div class="grid-2">
+        <div class="form-group"><label>Purpose</label>
+          <div class="tabs" style="max-width:none;margin:0"><button type="button" class="active" data-purpose="sale">Sell</button><button type="button" data-purpose="rent">Rent Out</button></div></div>
+        <div class="form-group"><label for="type">Property type *</label><select class="field" id="type" name="type" required></select></div>
+      </div>
+
+      <h2>2. Location</h2>
+      <div class="grid-2">
+        <div class="form-group"><label for="city">City *</label><select class="field" id="city" name="city" required></select></div>
+        <div class="form-group"><label for="location">Area / Society / Sector *</label><input class="field" id="location" name="location" required placeholder="e.g. Sector F-1, Mirpur"></div>
+      </div>
+
+      <h2>3. Property details</h2>
+      <div class="form-group"><label for="title">Ad title *</label><input class="field" id="title" name="title" required maxlength="90" placeholder="e.g. 10 Marla brand new house for sale"></div>
+      <div class="grid-3">
+        <div class="form-group"><label for="price" id="price-label">Price (PKR) *</label><input class="field" id="price" name="price" type="number" min="1" required placeholder="e.g. 8500000"><small id="price-words" style="color:var(--primary);font-weight:700"></small></div>
+        <div class="form-group"><label for="area">Area size *</label><input class="field" id="area" name="area" type="number" min="0" step="any" required></div>
+        <div class="form-group"><label for="areaUnit">Unit</label><select class="field" id="areaUnit" name="areaUnit"><option>Marla</option><option>Kanal</option><option>Sq Ft</option><option>Sq Yd</option><option>Acre</option></select></div>
+      </div>
+      <div class="grid-2" id="rooms">
+        <div class="form-group"><label for="beds">Bedrooms</label><select class="field" id="beds" name="beds"><option value="0">—</option></select></div>
+        <div class="form-group"><label for="baths">Bathrooms</label><select class="field" id="baths" name="baths"><option value="0">—</option></select></div>
+      </div>
+      <div class="form-group"><label for="description">Description *</label><textarea class="field" id="description" name="description" rows="6" required placeholder="Describe the property: rooms, features, nearby places, documents…"></textarea></div>
+
+      <h2>4. Photos</h2>
+      <label class="upload-box" for="photos">📷 <b>Tap to add photos</b><br><small>Up to 6 photos. They are resized automatically.</small></label>
+      <input type="file" id="photos" accept="image/*" multiple hidden>
+      <div class="previews" id="previews"></div>
+
+      <h2 style="margin-top:22px">5. Contact</h2>
+      <div class="grid-2">
+        <div class="form-group"><label for="phone">Phone *</label><input class="field" id="phone" name="phone" required></div>
+        <div class="form-group"><label for="whatsapp">WhatsApp</label><input class="field" id="whatsapp" name="whatsapp" placeholder="Same as phone if empty"></div>
+      </div>
+      <button class="btn btn-accent btn-lg btn-block" type="submit" id="submit">Submit Ad</button>
+      <p style="text-align:center;color:var(--muted);font-size:13px;margin-top:10px">Ads are reviewed by our team and go live after approval.</p>
+    </form>
+  </div>
+</main>
+<div id="site-footer"></div>
+<script type="module" src="assets/js/pages/post-ad.js"></script>
+</body>
+</html>

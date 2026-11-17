@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel | Zameen Online</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#1a3f8f">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="page-hero"><div class="container"><h1>Admin Panel</h1><p>Approve ads, manage dealers, services and users</p></div></section>
+  <div class="container dash">
+    <nav class="dash-nav" id="tabs">
+      <button data-tab="overview" class="active">Overview</button>
+      <button data-tab="pending">Pending Ads <span class="count hidden" id="pending-count"></span></button>
+      <button data-tab="ads">All Ads</button>
+      <button data-tab="dealers">Dealers</button>
+      <button data-tab="services">Services</button>
+      <button data-tab="inquiries">Inquiries</button>
+      <button data-tab="users">Users</button>
+    </nav>
+    <section id="panel"></section>
+  </div>
+</main>
+<div id="site-footer"></div>
+<script type="module" src="assets/js/pages/admin.js"></script>
+</body>
+</html>

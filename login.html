@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In | Zameen Online</title>
+  <meta name="theme-color" content="#1a3f8f">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main class="auth-wrap">
+  <div class="auth-card">
+    <!-- Sign in -->
+    <form id="signin">
+      <h1>Welcome back</h1>
+      <p class="sub">Sign in to post ads and manage your properties</p>
+      <div class="msg"></div>
+      <div class="form-group"><label for="si-email">Email</label><input class="field" id="si-email" name="email" type="email" required autocomplete="email"></div>
+      <div class="form-group"><label for="si-pass">Password</label><input class="field" id="si-pass" name="password" type="password" required autocomplete="current-password"></div>
+      <div style="text-align:right;margin:-6px 0 14px"><a href="#" id="forgot" style="font-size:13px;color:var(--primary);font-weight:600">Forgot password?</a></div>
+      <button class="btn btn-primary btn-block btn-lg" type="submit">Sign In</button>
+      <p class="switch-link">New to Zameen Online? <a href="#" data-mode="signup">Create an account</a></p>
+    </form>
+    <!-- Sign up -->
+    <form id="signup" class="hidden">
+      <h1>Create account</h1>
+      <p class="sub">Free forever — post your first 3 ads at no cost</p>
+      <div class="msg"></div>
+      <div class="form-group"><label>I am a</label>
+        <div class="tabs" style="max-width:none;margin:0">
+          <button type="button" class="active" data-role="user">Owner / Buyer</button>
+          <button type="button" data-role="dealer">Property Dealer</button>
+        </div></div>
+      <div class="form-group"><label for="su-name" id="name-label">Full name</label><input class="field" id="su-name" name="name" required autocomplete="name"></div>
+      <div class="form-group"><label for="su-phone">Mobile / WhatsApp</label><input class="field" id="su-phone" name="phone" required placeholder="03XX XXXXXXX" autocomplete="tel"></div>
+      <div class="form-group"><label for="su-email">Email</label><input class="field" id="su-email" name="email" type="email" required autocomplete="email"></div>
+      <div class="form-group"><label for="su-pass">Password</label><input class="field" id="su-pass" name="password" type="password" minlength="6" required autocomplete="new-password" placeholder="At least 6 characters"></div>
+      <button class="btn btn-accent btn-block btn-lg" type="submit">Create Account</button>
+      <p class="switch-link">Already have an account? <a href="#" data-mode="signin">Sign in</a></p>
+    </form>
+  </div>
+</main>
+<script type="module">
+  import { initPage, $, $$ } from "./assets/js/app.js";
+  import { signIn, signUp, resetPassword } from "./assets/js/db.js";
+  const p = new URLSearchParams(location.search);
+  const next = p.get("next") || "dashboard.html";
+  const safeNext = /^[a-z-]+\.html/.test(next) ? next : "dashboard.html";
+  const u = await initPage();
+  if (u) location.replace(safeNext);
+
+  let role = p.get("role") === "dealer" ? "dealer" : "user";
+  const setRole = r => { role = r; $$("[data-role]").forEach(b => b.classList.toggle("active", b.dataset.role === r)); $("#name-label").textContent = r === "dealer" ? "Agency / business name" : "Full name"; };
+  $$("[data-role]").forEach(b => b.onclick = () => setRole(b.dataset.role));
+  setRole(role);
+
+  const show = m => { $("#signin").classList.toggle("hidden", m !== "signin"); $("#signup").classList.toggle("hidden", m !== "signup"); document.title = (m === "signup" ? "Create Account" : "Sign In") + " | Zameen Online"; };
+  $$("[data-mode]").forEach(a => a.onclick = e => { e.preventDefault(); show(a.dataset.mode); });
+  show(p.get("mode") === "signup" ? "signup" : "signin");
+
+  const nice = e => {
+    const c = e.code || "";
+    if (c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found")) return "Incorrect email or password.";
+    if (c.includes("email-already-in-use")) return "An account with this email already exists.";
+    if (c.includes("weak-password")) return "Password must be at least 6 characters.";
+    if (c.includes("too-many-requests")) return "Too many attempts. Please wait a minute and try again.";
+    return e.message || "Something went wrong.";
+  };
+  const msg = (form, text, ok) => form.querySelector(".msg").innerHTML = text ? `<div class="alert ${ok ? "alert-ok" : "alert-error"}">${text}</div>` : "";
+
+  $("#signin").onsubmit = async e => {
+    e.preventDefault(); const f = new FormData(e.target), b = e.target.querySelector("[type=submit]");
+    b.disabled = true; msg(e.target, "");
+    try { await signIn(f.get("email").trim(), f.get("password")); location.href = safeNext; }
+    catch (err) { msg(e.target, nice(err)); b.disabled = false; }
+  };
+  $("#signup").onsubmit = async e => {
+    e.preventDefault(); const f = new FormData(e.target), b = e.target.querySelector("[type=submit]");
+    b.disabled = true; msg(e.target, "");
+    try { await signUp({ name: f.get("name").trim(), phone: f.get("phone").trim(), email: f.get("email").trim(), password: f.get("password"), role }); location.href = safeNext; }
+    catch (err) { msg(e.target, nice(err)); b.disabled = false; }
+  };
+  $("#forgot").onclick = async e => {
+    e.preventDefault(); const email = $("#si-email").value.trim();
+    if (!email) return msg($("#signin"), "Enter your email above first, then tap Forgot password.");
+    try { await resetPassword(email); msg($("#signin"), "Password reset link sent to " + email, true); }
+    catch (err) { msg($("#signin"), nice(err)); }
+  };
+</script>
+</body>
+</html>

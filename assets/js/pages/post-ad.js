@@ -1,0 +1,97 @@
+import { requireUser, $, $$, esc, cityOptions, typeOptions, formatPrice, compressImage, toast } from "../app.js";
+import { createListing, updateListing, getListing, getPhotos, LIVE } from "../db.js";
+
+// Make a smaller copy of an image data URL (used for the thumbnail)
+const shrink = (src, max, q) => new Promise((res, rej) => {
+  const img = new Image();
+  img.onload = () => {
+    const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", q));
+  };
+  img.onerror = rej; img.src = src;
+});
+
+const u = await requireUser();
+if (u) {
+  const form = $("#ad-form");
+  const editId = new URLSearchParams(location.search).get("id");
+  let purpose = "sale", images = [];
+
+  $("#type").innerHTML = typeOptions("", "Select type");
+  $("#city").innerHTML = cityOptions("Mirpur AJK", "Select city");
+  const nums = n => Array.from({ length: n }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+  $("#beds").insertAdjacentHTML("beforeend", nums(10) + '<option value="11">10+</option>');
+  $("#baths").insertAdjacentHTML("beforeend", nums(10));
+  form.phone.value = u.phone || "";
+
+  const setPurpose = p => {
+    purpose = p;
+    $$("[data-purpose]").forEach(b => b.classList.toggle("active", b.dataset.purpose === p));
+    $("#price-label").textContent = p === "rent" ? "Monthly rent (PKR) *" : "Price (PKR) *";
+    showWords();
+  };
+  $$("[data-purpose]").forEach(b => b.onclick = () => setPurpose(b.dataset.purpose));
+  const showWords = () => $("#price-words").innerHTML = form.price.value ? formatPrice(form.price.value, purpose) : "";
+  form.price.oninput = showWords;
+  const roomsVisible = () => $("#rooms").style.display = ["plot", "land"].includes(form.type.value) ? "none" : "";
+  form.type.onchange = roomsVisible;
+
+  const renderPreviews = () => {
+    $("#previews").innerHTML = images.map((s, i) => `<div><img src="${esc(s)}" alt=""><button type="button" data-rm="${i}" aria-label="Remove">✕</button></div>`).join("");
+    $$("[data-rm]").forEach(b => b.onclick = () => { images.splice(+b.dataset.rm, 1); renderPreviews(); });
+  };
+  $("#photos").onchange = async e => {
+    const files = [...e.target.files].slice(0, 6 - images.length);
+    if (e.target.files.length > files.length) toast("Maximum 6 photos");
+    for (const f of files) {
+      try { images.push(await compressImage(f, 1100, 0.62)); } catch { toast("Could not read " + f.name); }
+    }
+    e.target.value = ""; renderPreviews();
+  };
+
+  // Edit mode
+  if (editId) {
+    const l = await getListing(editId);
+    if (!l || (l.ownerId !== u.uid && u.role !== "admin")) { location.href = "dashboard.html"; }
+    else {
+      $("#h").textContent = "Edit Your Ad"; $("#submit").textContent = "Save Changes";
+      for (const k of ["type", "city", "location", "title", "price", "area", "areaUnit", "beds", "baths", "description", "phone", "whatsapp"]) if (form[k] && l[k] != null) form[k].value = l[k];
+      images = [...await getPhotos(l)]; renderPreviews(); setPurpose(l.purpose); roomsVisible();
+    }
+  }
+
+  const msg = (t, ok) => { form.querySelector(".msg").innerHTML = t ? `<div class="alert ${ok ? "alert-ok" : "alert-error"}">${t}</div>` : ""; if (t) form.scrollIntoView({ behavior: "smooth" }); };
+
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const f = new FormData(form);
+    if (!images.length) return msg("Please add at least one photo — ads with photos get 10× more calls.");
+    const size = images.reduce((s, x) => s + x.length, 0);
+    if (LIVE && size > 900000) return msg("Photos are too large together. Please remove one or two photos.");
+    const data = {
+      purpose, type: f.get("type"), city: f.get("city"), location: f.get("location").trim(), title: f.get("title").trim(),
+      price: Number(f.get("price")), area: Number(f.get("area")), areaUnit: f.get("areaUnit"),
+      beds: ["plot", "land"].includes(f.get("type")) ? 0 : Number(f.get("beds")), baths: ["plot", "land"].includes(f.get("type")) ? 0 : Number(f.get("baths")),
+      description: f.get("description").trim(), phone: f.get("phone").trim(),
+      whatsapp: (f.get("whatsapp") || f.get("phone")).replace(/\D/g, "").replace(/^0/, "92")
+    };
+    const btn = $("#submit"); btn.disabled = true; btn.textContent = "Saving…";
+    try {
+      // Uploaded photos go to separate storage (with a small thumbnail); plain URLs stay on the listing.
+      const firstUpload = images.find(s => s.startsWith("data:"));
+      let media = null;
+      if (firstUpload) media = { images, thumb: await shrink(firstUpload, 520, 0.6) };
+      else { data.images = images; data.photoCount = 0; }
+      if (editId) {
+        await updateListing(editId, { ...data, ...(u.role === "admin" ? {} : { status: "pending" }) }, media);
+        location.href = "dashboard.html?saved=1";
+      } else {
+        await createListing(data, media);
+        location.href = "dashboard.html?posted=1";
+      }
+    } catch (err) {
+      console.error(err); msg("Could not save your ad: " + (err.message || err)); btn.disabled = false; btn.textContent = editId ? "Save Changes" : "Submit Ad";
+    }
+  };
+}

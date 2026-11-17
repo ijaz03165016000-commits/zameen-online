@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Properties for Sale &amp; Rent | Zameen Online</title>
+  <meta name="description" content="Browse houses, plots, apartments and commercial properties for sale and rent in Azad Kashmir and Pakistan.">
+  <meta name="theme-color" content="#1a3f8f">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="page-hero">
+    <div class="container">
+      <div class="crumbs"><a href="index.html">Home</a> › Properties</div>
+      <h1 id="page-title">Properties in Pakistan</h1>
+      <p id="page-sub">Houses, plots, apartments and commercial properties</p>
+    </div>
+  </section>
+  <div class="container listing-layout">
+    <aside class="filters" id="filters">
+      <h3>Filters <button type="button" id="reset">Reset</button></h3>
+      <form id="filter-form">
+        <div class="form-group"><label>Purpose</label>
+          <div class="chip-row" id="purpose-chips">
+            <button type="button" class="chip" data-v="">All</button>
+            <button type="button" class="chip" data-v="sale">Buy</button>
+            <button type="button" class="chip" data-v="rent">Rent</button>
+          </div></div>
+        <div class="form-group"><label for="f-q">Keyword</label><input class="field" id="f-q" name="q" placeholder="e.g. DHA, Sector F-1"></div>
+        <div class="form-group"><label for="f-region">Region</label>
+          <select class="field" id="f-region" name="region"><option value="">All Pakistan</option><option value="ajk">Azad Kashmir only</option></select></div>
+        <div class="form-group"><label for="f-city">City</label><select class="field" id="f-city" name="city"></select></div>
+        <div class="form-group"><label for="f-type">Property Type</label><select class="field" id="f-type" name="type"></select></div>
+        <div class="form-group"><label>Price (PKR)</label>
+          <div class="form-row"><input class="field" name="min" type="number" min="0" placeholder="Min"><input class="field" name="max" type="number" min="0" placeholder="Max"></div></div>
+        <div class="form-group"><label>Bedrooms</label>
+          <div class="chip-row" id="bed-chips">
+            <button type="button" class="chip" data-v="">Any</button><button type="button" class="chip" data-v="1">1+</button>
+            <button type="button" class="chip" data-v="2">2+</button><button type="button" class="chip" data-v="3">3+</button>
+            <button type="button" class="chip" data-v="4">4+</button><button type="button" class="chip" data-v="5">5+</button>
+          </div></div>
+        <button class="btn btn-primary btn-block" type="submit">Apply Filters</button>
+      </form>
+    </aside>
+    <section>
+      <div class="results-bar">
+        <h2 id="count">Loading…</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline filter-toggle" id="toggle-filters" type="button">☰ Filters</button>
+          <select class="field" id="sort" aria-label="Sort">
+            <option value="new">Newest first</option><option value="low">Price: low to high</option>
+            <option value="high">Price: high to low</option><option value="popular">Most viewed</option>
+          </select>
+        </div>
+      </div>
+      <div class="prop-grid" id="results"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      <div class="pager" id="pager"></div>
+    </section>
+  </div>
+</main>
+<div id="site-footer"></div>
+<script type="module" src="assets/js/pages/listings.js"></script>
+</body>
+</html>

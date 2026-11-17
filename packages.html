@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dealer Packages | Zameen Online</title>
+  <meta name="description" content="Advertise your properties on Zameen Online. Dealer packages from free to Elite with 800+ ads.">
+  <meta name="theme-color" content="#1a3f8f">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="page-hero">
+    <div class="container">
+      <div class="crumbs"><a href="index.html">Home</a> › Packages</div>
+      <h1>Dealer Packages</h1>
+      <p>Choose the plan that fits your business — reach millions of buyers and renters</p>
+    </div>
+  </section>
+  <section class="section" style="padding-top:60px">
+    <div class="container">
+      <div class="plan-grid" id="plans"></div>
+      <div class="panel" style="margin-top:40px">
+        <h2>How to subscribe</h2>
+        <ol style="padding-left:20px;display:grid;gap:8px;color:#334155">
+          <li>Create a free <a href="login.html?mode=signup&role=dealer" style="color:var(--primary);font-weight:700">dealer account</a>.</li>
+          <li>Tap <b>Choose plan</b> and send us a WhatsApp message with your account email.</li>
+          <li>Pay via JazzCash, EasyPaisa or bank transfer — we'll share the details on WhatsApp.</li>
+          <li>Your package is activated within a few hours and your verified badge appears.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="site-footer"></div>
+<script type="module">
+  import { initPage, $, waLink } from "./assets/js/app.js";
+  import { PACKAGES } from "./assets/js/seed.js";
+  import { SITE } from "./assets/js/firebase-config.js";
+  const u = await initPage();
+  $("#plans").innerHTML = PACKAGES.map(p => `
+    <div class="plan ${p.popular ? "popular" : ""}">
+      ${p.popular ? '<span class="ribbon">Most Popular</span>' : ""}
+      <h3>${p.name}</h3>
+      <div class="amount">${p.price ? "Rs " + p.price.toLocaleString("en-PK") : "Free"}</div>
+      <div class="per">${p.per}</div>
+      <ul>${p.features.map(f => `<li>${f}</li>`).join("")}</ul>
+      ${p.price
+        ? `<a class="btn ${p.popular ? "btn-primary" : "btn-outline"} btn-block" target="_blank" rel="noopener" href="${waLink(SITE.whatsapp, `Assalam o Alaikum, I want the ${p.name} package (Rs ${p.price}/month) on Zameen Online.${u ? " My account: " + u.email : ""}`)}">Choose ${p.name}</a>`
+        : `<a class="btn btn-outline btn-block" href="${u ? "post-ad.html" : "login.html?mode=signup&role=dealer"}">${u ? "Post an Ad" : "Sign Up Free"}</a>`}
+    </div>`).join("");
+</script>
+</body>
+</html>

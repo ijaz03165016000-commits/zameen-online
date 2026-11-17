@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Property Dealers &amp; Agents | Zameen Online</title>
+  <meta name="description" content="Find verified property dealers and real estate agents in Mirpur, Muzaffarabad, Rawalakot, Islamabad, Lahore and across Pakistan.">
+  <meta name="theme-color" content="#1a3f8f">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="page-hero">
+    <div class="container">
+      <div class="crumbs"><a href="index.html">Home</a> › Dealers</div>
+      <h1>Property Dealers &amp; Agents</h1>
+      <p>Connect with trusted, verified real estate professionals in your city</p>
+    </div>
+  </section>
+  <section class="container" style="padding:32px 20px 70px">
+    <div class="results-bar">
+      <h2 id="count">Loading…</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="field" id="q" placeholder="Search dealer name" style="width:220px">
+        <select class="field" id="city"></select>
+        <a class="btn btn-accent" href="packages.html">Become a Dealer</a>
+      </div>
+    </div>
+    <div class="dealer-grid" id="list"></div>
+  </section>
+</main>
+<div id="site-footer"></div>
+<script type="module" src="assets/js/pages/dealers.js"></script>
+</body>
+</html>
