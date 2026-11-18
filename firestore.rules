@@ -1,74 +1,103 @@
 rules_version = '2';
 // ====================================================================
-// Zameen Online — Robust Enterprise Firestore Security Rules
+// Zameen Online — Production Firestore Security Rules
 // Roles: super_admin, admin, district_admin, dealer, user
+// Publish in Firebase Console → Firestore Database → Rules → Publish
 // ====================================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() { 
-      return request.auth != null; 
+    function signedIn() {
+      return request.auth != null;
     }
 
-    function getUserDoc() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
+    function hasUserDoc() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    function userRole() {
+      return hasUserDoc()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user')
+        : 'user';
+    }
+
+    function userDistricts() {
+      return hasUserDoc()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('assignedDistricts', [])
+        : [];
+    }
+
+    function userSingleDistrict() {
+      return hasUserDoc()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('district', '')
+        : '';
+    }
+
+    // Exact owner email whitelist — never wildcard-match names/emails so
+    // private seller test accounts remain genuine private sellers.
     function isOwnerEmail() {
-      return signedIn() && request.auth.token.email is string && (
-        request.auth.token.email.matches('(?i).*ijaz.*') ||
-        request.auth.token.email == 'admin@zameen.online' ||
-        request.auth.token.email == 'info@zameen.online' ||
-        request.auth.token.email == 'ijaz03165016000@gmail.com'
-      );
+      return signedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() in [
+          'ijaz03165016000@gmail.com',
+          'admin@zameen.online',
+          'info@zameen.online'
+        ];
     }
 
     function isGlobalAdmin() {
       return signedIn() && (
         isOwnerEmail() ||
-        getUserDoc().role == 'super_admin' || 
-        getUserDoc().role == 'admin'
+        userRole() in ['super_admin', 'admin']
       );
     }
 
     function isStaff() {
       return signedIn() && (
-        isGlobalAdmin() || 
-        getUserDoc().role == 'district_admin'
+        isGlobalAdmin() ||
+        userRole() == 'district_admin'
       );
     }
 
-    function isDistrictAdmin(city) {
+    function isDistrictAdminFor(city) {
       return signedIn() && (
         isGlobalAdmin() ||
-        (getUserDoc().role == 'district_admin' && (
-          (getUserDoc().assignedDistricts is list && city in getUserDoc().assignedDistricts) ||
-          (getUserDoc().district is string && getUserDoc().district == city)
+        (userRole() == 'district_admin' && (
+          (userDistricts() is list && city in userDistricts()) ||
+          (userSingleDistrict() is string && userSingleDistrict() == city)
         ))
       );
     }
 
     function ownsListing(id) {
-      return signedIn() && exists(/databases/$(database)/documents/listings/$(id)) && get(/databases/$(database)/documents/listings/$(id)).data.ownerId == request.auth.uid;
+      return signedIn()
+        && exists(/databases/$(database)/documents/listings/$(id))
+        && get(/databases/$(database)/documents/listings/$(id)).data.ownerId == request.auth.uid;
     }
 
     // -------------------------------------------------------------
     // USERS COLLECTION
     // -------------------------------------------------------------
     match /users/{uid} {
-      // User can read own doc; all staff (admin, district admin) can read user docs
+      // Users read their own doc; staff can read all user docs
       allow read: if signedIn() && (request.auth.uid == uid || isStaff());
 
-      // Admins or the user themselves can create their user document
-      allow create: if isGlobalAdmin() || (signedIn() && request.auth.uid == uid);
+      // Self-signup can only create 'user' or 'dealer' on Basic plan;
+      // Global Admins can create any user doc.
+      allow create: if isGlobalAdmin()
+                    || (signedIn()
+                        && request.auth.uid == uid
+                        && request.resource.data.role in ['user', 'dealer']
+                        && request.resource.data.get('plan', 'Basic') == 'Basic');
 
-      // Global Admins can update any user doc (assign roles, packages, districts)
-      // Regular users can only update their own profile (not role, plan, or assignedDistricts)
+      // Global Admins can manage any user's role, plan, and districts.
+      // Regular users can only edit safe profile fields (name, phone, city).
       allow update: if isGlobalAdmin()
-                    || (signedIn() && request.auth.uid == uid
-                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'assignedDistricts']));
+                    || (signedIn()
+                        && request.auth.uid == uid
+                        && !request.resource.data.diff(resource.data).affectedKeys()
+                            .hasAny(['role', 'plan', 'assignedDistricts', 'district', 'email', 'isSuperAdmin']));
 
       allow delete: if isGlobalAdmin();
     }
@@ -77,27 +106,40 @@ service cloud.firestore {
     // LISTINGS COLLECTION
     // -------------------------------------------------------------
     match /listings/{id} {
-      // Public sees approved ads; Staff sees all ads to moderate; owners see their own
+      // Public sees approved ads; Staff sees ALL ads (including pending & rejected);
+      // Owners see their own ads regardless of status.
       allow read: if resource.data.status == 'approved'
                   || isStaff()
                   || (signedIn() && resource.data.ownerId == request.auth.uid);
 
-      // Create: Users create ads as "pending"; Admins can create approved ads
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      // Private sellers & dealers MUST create ads as 'pending' and not featured.
+      // Global Admins may create pre-approved ads directly.
+      allow create: if signedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && (
+                      isGlobalAdmin()
+                      || (request.resource.data.status == 'pending'
+                          && request.resource.data.get('featured', false) == false)
+                    );
 
       // Update / Moderation:
-      // Global Admins can update any ad
-      // District Admins can update ads in their assigned cities
-      // Owners can update their own ads
-      // Public can increment views
+      // 1. Global Admins can approve, reject, feature, or edit any ad
+      // 2. District Admins can moderate ads in their assigned cities
+      // 3. Owners can edit their own ad — resets to 'pending' and cannot alter ownerId or featured
+      // 4. Public can increment views by 1
       allow update: if isGlobalAdmin()
-                    || (getUserDoc().role == 'district_admin' && isDistrictAdmin(resource.data.city))
-                    || (signedIn() && resource.data.ownerId == request.auth.uid)
-                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']));
+                    || isDistrictAdminFor(resource.data.get('city', ''))
+                    || (signedIn()
+                        && resource.data.ownerId == request.auth.uid
+                        && request.resource.data.ownerId == resource.data.ownerId
+                        && request.resource.data.status == 'pending'
+                        && request.resource.data.get('featured', false) == resource.data.get('featured', false))
+                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
+                        && request.resource.data.views is number
+                        && request.resource.data.views == resource.data.get('views', 0) + 1);
 
-      // Deletions
-      allow delete: if isGlobalAdmin() 
-                    || (getUserDoc().role == 'district_admin' && isDistrictAdmin(resource.data.city))
+      allow delete: if isGlobalAdmin()
+                    || isDistrictAdminFor(resource.data.get('city', ''))
                     || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
 
@@ -118,8 +160,15 @@ service cloud.firestore {
     // -------------------------------------------------------------
     match /dealers/{id} {
       allow read: if true;
-      // Allow dealers to create/update own profile; Allow staff to manage all dealers
-      allow create, update: if isStaff() || (signedIn() && request.auth.uid == id);
+      allow create: if isStaff()
+                    || (signedIn()
+                        && request.auth.uid == id
+                        && request.resource.data.get('verified', false) == false
+                        && request.resource.data.get('plan', 'Basic') == 'Basic');
+      allow update: if isStaff()
+                    || (signedIn()
+                        && request.auth.uid == id
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['verified', 'plan']));
       allow delete: if isGlobalAdmin();
     }
 
@@ -135,8 +184,12 @@ service cloud.firestore {
     // BUYER INQUIRIES
     // -------------------------------------------------------------
     match /inquiries/{id} {
-      allow create: if true;
-      allow read, update, delete: if isStaff() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow create: if request.resource.data.keys().hasAll(['listingId', 'name', 'phone', 'message'])
+                    && request.resource.data.get('read', false) == false
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() <= 2000;
+      allow read, update, delete: if isStaff()
+                                  || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
   }
 }

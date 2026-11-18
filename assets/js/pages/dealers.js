@@ -1,5 +1,5 @@
-import { initPage, $, esc, cityOptions, waLink, ICON } from "../app.js";
-import { getDealers } from "../db.js?v=20261118_01";
+import { initPage, $, esc, cityOptions, waLink, ICON } from "../app.js?v=20261118_02";
+import { subscribeDealers } from "../db.js?v=20261118_02";
 
 initPage();
 $("#city").innerHTML = cityOptions(new URLSearchParams(location.search).get("city") || "");
@@ -31,4 +31,8 @@ function render() {
 }
 $("#q").oninput = render;
 $("#city").onchange = render;
-try { all = await getDealers(); render(); } catch (e) { console.error(e); $("#count").textContent = "Could not load dealers"; }
+const unsubDealers = subscribeDealers(
+  rows => { all = rows || []; render(); },
+  e => { console.error(e); $("#count").textContent = "Could not load dealers"; }
+);
+window.addEventListener("beforeunload", () => { try { unsubDealers(); } catch {} });

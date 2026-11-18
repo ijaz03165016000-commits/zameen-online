@@ -1,5 +1,5 @@
-import { initPage, $, $$, esc, cityOptions, waLink, ICON } from "../app.js";
-import { getServices } from "../db.js?v=20261118_01";
+import { initPage, $, $$, esc, cityOptions, waLink, ICON } from "../app.js?v=20261118_02";
+import { subscribeServices } from "../db.js?v=20261118_02";
 import { SERVICE_CATEGORIES } from "../seed.js";
 import { SITE } from "../firebase-config.js";
 
@@ -38,4 +38,8 @@ function render() {
 }
 $("#city").onchange = render;
 $("#join").onclick = e => { e.preventDefault(); window.open(waLink(SITE.whatsapp, "Assalam o Alaikum, I want to list my service on Zameen Online."), "_blank"); };
-try { all = await getServices(); render(); } catch (e) { console.error(e); $("#count").textContent = "Could not load services"; }
+const unsubServices = subscribeServices(
+  rows => { all = rows || []; render(); },
+  e => { console.error(e); $("#count").textContent = "Could not load services"; }
+);
+window.addEventListener("beforeunload", () => { try { unsubServices(); } catch {} });

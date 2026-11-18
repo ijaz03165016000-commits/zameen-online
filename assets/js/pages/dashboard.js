@@ -1,11 +1,12 @@
-import { requireUser, $, $$, esc, formatPrice, timeAgo, toast, favs, propertyCard, waLink, coverImg, hydrateThumbs, cityOptions } from "../app.js";
-import { getMyListings, deleteListing, getMyInquiries, markInquiry, getApprovedListings, updateProfile, signOut, getDealer, saveDealer, resetPassword } from "../db.js?v=20261118_01";
+import { requireUser, isAdminRole, $, $$, esc, formatPrice, timeAgo, toast, favs, propertyCard, waLink, coverImg, hydrateThumbs, cityOptions } from "../app.js?v=20261118_02";
+import { subscribeMyListings, deleteListing, subscribeMyInquiries, markInquiry, getApprovedListings, updateProfile, signOut, getDealer, saveDealer, resetPassword } from "../db.js?v=20261118_02";
 import { PACKAGES } from "../seed.js";
 
 const u = await requireUser();
 
 if (u) {
   const isDealer = u.role === "dealer";
+  const isAdmin = isAdminRole(u.role);
   const plan = PACKAGES.find(p => p.name === (u.plan || "Basic")) || PACKAGES[0];
 
   $("#hello").textContent = `Assalam o Alaikum, ${u.name.split(" ")[0]}`;
@@ -13,23 +14,36 @@ if (u) {
 
   const badgeSlot = $("#user-badge-slot");
   if (badgeSlot) {
-    const roleBadge = isDealer 
-      ? '<span class="badge badge-dealer" style="padding:6px 14px;font-size:12px">🏢 Real Estate Dealer</span>' 
-      : '<span class="badge badge-user" style="padding:6px 14px;font-size:12px">👤 Private Seller</span>';
+    const roleBadge = u.role === "super_admin"
+      ? '<span class="badge badge-super_admin" style="padding:6px 14px;font-size:12px">👑 Super Admin</span>'
+      : u.role === "admin"
+        ? '<span class="badge badge-admin" style="padding:6px 14px;font-size:12px">🛡️ Global Admin</span>'
+        : u.role === "district_admin"
+          ? '<span class="badge badge-district_admin" style="padding:6px 14px;font-size:12px">📍 District Admin</span>'
+          : isDealer
+            ? '<span class="badge badge-dealer" style="padding:6px 14px;font-size:12px">🏢 Real Estate Dealer</span>'
+            : '<span class="badge badge-user" style="padding:6px 14px;font-size:12px">👤 Private Seller</span>';
     badgeSlot.innerHTML = roleBadge;
   }
 
-  // Show Agency tab if user is a dealer
   const agencyBtn = $("#tab-agency-btn");
   if (agencyBtn && isDealer) {
     agencyBtn.style.display = "flex";
   }
 
   const q = new URLSearchParams(location.search);
-  if (q.get("posted")) toast("Your property was submitted and is under review by admin.", 4000);
-  if (q.get("saved")) toast("Settings saved successfully.", 3000);
+  if (q.get("posted") === "live") toast("Your property ad is live on Zameen Online!", 4000);
+  else if (q.get("posted")) toast("Your property was submitted and is waiting for admin approval.", 4500);
+  if (q.get("saved")) toast("Changes saved successfully.", 3000);
 
+  let myAds = [];
+  let myAdsLoaded = false;
+  let myAdsError = "";
   let inquiries = [];
+  let activeTab = "ads";
+  let adFilter = "all";
+  let inqFilter = "all";
+
   const refreshUnread = () => {
     const n = inquiries.filter(i => !i.read).length;
     const badge = $("#unread");
@@ -39,19 +53,59 @@ if (u) {
     }
   };
 
-  getMyInquiries(u.uid).then(r => { inquiries = r; refreshUnread(); }).catch(console.error);
+  // Real-time subscriptions so seller sees admin approval/rejection LIVE without refresh
+  const unsubAds = subscribeMyListings(
+    u.uid,
+    rows => {
+      const prevStatus = new Map(myAds.map(a => [a.id, a.status]));
+      myAds = rows || [];
+      myAdsError = "";
+      if (myAdsLoaded) {
+        for (const a of myAds) {
+          const old = prevStatus.get(a.id);
+          if (old === "pending" && a.status === "approved") {
+            toast(`✓ Your ad "${a.title}" was approved and is now LIVE!`, 5000);
+          } else if (old === "pending" && a.status === "rejected") {
+            toast(`Ad "${a.title}" was rejected by admin.`, 5000);
+          }
+        }
+      }
+      myAdsLoaded = true;
+      if (activeTab === "ads") show("ads");
+    },
+    err => {
+      console.error("My listings listener error:", err);
+      myAdsError = err.message || String(err);
+      myAdsLoaded = true;
+      if (activeTab === "ads") show("ads");
+    }
+  );
 
-  let adFilter = "all";
-  let inqFilter = "all";
+  const unsubInq = subscribeMyInquiries(
+    u.uid,
+    rows => {
+      inquiries = rows || [];
+      refreshUnread();
+      if (activeTab === "inbox") show("inbox");
+    },
+    err => console.error("My inquiries listener error:", err)
+  );
+
+  window.addEventListener("beforeunload", () => {
+    try { unsubAds(); } catch {}
+    try { unsubInq(); } catch {}
+  });
 
   const tabs = {
     async ads() {
-      const ads = await getMyListings(u.uid);
+      if (!myAdsLoaded) return '<div class="skeleton" style="height:220px"></div>';
+      if (myAdsError) return `<div class="alert alert-error">Could not load your properties: ${esc(myAdsError)}</div>`;
+
+      const ads = myAds;
       const views = ads.reduce((s, a) => s + (a.views || 0), 0);
       const totalAds = ads.length;
-      const maxAds = plan.ads || 3;
-      const usagePercent = Math.min(100, Math.round((totalAds / maxAds) * 100));
-
+      const maxAds = isAdmin ? 99999 : (plan.ads || 1);
+      const usagePercent = isAdmin ? 0 : Math.min(100, Math.round((totalAds / maxAds) * 100));
       const quotaColorClass = usagePercent >= 100 ? "danger" : usagePercent >= 80 ? "warning" : "";
 
       const filteredAds = ads.filter(a => {
@@ -62,7 +116,7 @@ if (u) {
       });
 
       return `
-        <!-- Ad Quota Visualizer -->
+        ${!isAdmin ? `
         <div class="quota-box">
           <div class="quota-head">
             <div>
@@ -81,7 +135,7 @@ if (u) {
               ⚠️ You have used ${usagePercent}% of your ad limit. Upgrade to post more listings and get priority placement.
             </div>
           ` : ""}
-        </div>
+        </div>` : ""}
 
         <div class="kpis">
           <div class="kpi"><small>Total Listings</small><b>${ads.length}</b></div>
@@ -91,11 +145,13 @@ if (u) {
         </div>
 
         <div class="results-bar">
-          <h2>My Properties (${filteredAds.length})</h2>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <h2 style="margin:0">My Properties (${filteredAds.length})</h2>
+            <span class="live-pill">Live Status</span>
+          </div>
           ${totalAds < maxAds ? `<a class="btn btn-accent" href="post-ad.html">+ Post New Property</a>` : `<a class="btn btn-outline" href="packages.html">Quota Full — Upgrade</a>`}
         </div>
 
-        <!-- Filter pills -->
         <div class="filter-pills" id="ad-filter-pills">
           <button class="filter-pill ${adFilter === 'all' ? 'active' : ''}" data-ad-filter="all">All (${ads.length})</button>
           <button class="filter-pill ${adFilter === 'approved' ? 'active' : ''}" data-ad-filter="approved">Live Approved (${ads.filter(a => a.status === "approved").length})</button>
@@ -114,6 +170,8 @@ if (u) {
             <td>
               <span class="badge badge-${esc(a.status)}">${esc(a.status)}</span>
               ${a.featured ? ' <span class="badge badge-featured">★</span>' : ""}
+              ${a.status === "pending" ? '<span class="mod-stamp">Under admin review</span>' : ""}
+              ${a.status === "rejected" && a.moderationNote ? `<span class="mod-stamp" style="color:#991b1b">Note: ${esc(a.moderationNote)}</span>` : ""}
             </td>
             <td>${a.views || 0}</td>
             <td>
@@ -189,8 +247,8 @@ if (u) {
               <small style="color:var(--muted)">This information appears on your public agency profile and dealer directory listing.</small>
             </div>
             <div>
-              ${dealerData.verified 
-                ? '<span class="badge badge-verified" style="padding:6px 12px">✓ Verified Agency</span>' 
+              ${dealerData.verified
+                ? '<span class="badge badge-verified" style="padding:6px 12px">✓ Verified Agency</span>'
                 : '<span class="badge" style="background:#fef3c7;color:#92400e;padding:6px 12px">Unverified Agency</span>'}
             </div>
           </div>
@@ -278,58 +336,64 @@ if (u) {
   };
 
   async function show(name) {
+    activeTab = name;
     $$("#tabs [data-tab]").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
-    $("#panel").innerHTML = '<div class="skeleton" style="height:220px"></div>';
-
-    try { 
-      $("#panel").innerHTML = await tabs[name](); 
-      hydrateThumbs($("#panel")); 
-    } catch (e) { 
-      console.error(e); 
-      $("#panel").innerHTML = '<div class="alert alert-error">Could not load this tab. Please refresh the page.</div>'; 
+    if (name !== "ads" || !myAdsLoaded) {
+      $("#panel").innerHTML = '<div class="skeleton" style="height:220px"></div>';
     }
 
-    // Ad delete listener
+    try {
+      $("#panel").innerHTML = await tabs[name]();
+      hydrateThumbs($("#panel"));
+    } catch (e) {
+      console.error(e);
+      $("#panel").innerHTML = '<div class="alert alert-error">Could not load this tab. Please refresh the page.</div>';
+    }
+
     $$("[data-del]").forEach(b => b.onclick = async () => {
       if (!confirm("Permanently delete this property listing?")) return;
-      await deleteListing(b.dataset.del);
-      toast("Property listing deleted");
-      show("ads");
+      b.disabled = true;
+      try {
+        await deleteListing(b.dataset.del);
+        toast("Property listing deleted");
+      } catch (err) {
+        toast("Failed to delete: " + (err.message || err), 4000);
+        b.disabled = false;
+      }
     });
 
-    // Inquiries mark as read
     $$("[data-read]").forEach(b => b.onclick = async () => {
-      await markInquiry(b.dataset.read, true);
-      const target = inquiries.find(i => i.id === b.dataset.read);
-      if (target) target.read = true;
-      refreshUnread();
-      show("inbox");
+      try {
+        await markInquiry(b.dataset.read, true);
+      } catch (err) {
+        toast("Failed: " + (err.message || err));
+      }
     });
 
-    // Ad filter pills
     $$("[data-ad-filter]").forEach(b => b.onclick = () => {
       adFilter = b.dataset.adFilter;
       show("ads");
     });
 
-    // Inquiries filter pills
     $$("[data-inq-filter]").forEach(b => b.onclick = () => {
       inqFilter = b.dataset.inqFilter;
       show("inbox");
     });
 
-    // Profile form
     const pf = $("#profile");
     if (pf) {
       pf.onsubmit = async e => {
         e.preventDefault();
         const f = new FormData(pf);
-        await updateProfile({ name: f.get("name").trim(), phone: f.get("phone").trim() });
-        toast("Profile saved successfully");
+        try {
+          await updateProfile({ name: f.get("name").trim(), phone: f.get("phone").trim() });
+          toast("Profile saved successfully");
+        } catch (err) {
+          toast("Could not save profile: " + (err.message || err), 4000);
+        }
       };
     }
 
-    // Agency form
     const af = $("#agency-form");
     if (af) {
       af.onsubmit = async e => {
@@ -344,12 +408,15 @@ if (u) {
           address: f.get("address").trim(),
           about: f.get("about").trim()
         };
-        await saveDealer(u.uid, agencyData);
-        toast("Agency branding saved successfully");
+        try {
+          await saveDealer(u.uid, agencyData);
+          toast("Agency branding saved successfully");
+        } catch (err) {
+          toast("Could not save agency profile: " + (err.message || err), 4000);
+        }
       };
     }
 
-    // Password reset button
     const btnReset = $("#btn-reset-pass");
     if (btnReset) {
       btnReset.onclick = async () => {

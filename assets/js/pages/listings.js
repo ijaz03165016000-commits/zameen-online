@@ -1,5 +1,5 @@
-import { initPage, $, $$, params, propertyCard, cityOptions, typeOptions, typeLabel, isAJK, hydrateThumbs } from "../app.js";
-import { getApprovedListings } from "../db.js?v=20261118_01";
+import { initPage, $, $$, params, propertyCard, cityOptions, typeOptions, typeLabel, isAJK, hydrateThumbs } from "../app.js?v=20261118_02";
+import { subscribeApprovedListings } from "../db.js?v=20261118_02";
 import { COMMERCIAL_TYPES, AJK_CITIES } from "../seed.js";
 
 initPage();
@@ -84,5 +84,8 @@ function apply() {
 }
 
 titles();
-try { all = await getApprovedListings(); render(); }
-catch (e) { console.error(e); $("#count").textContent = "Could not load properties"; $("#results").innerHTML = ""; }
+const unsubListings = subscribeApprovedListings(
+  rows => { all = rows || []; render(); },
+  e => { console.error(e); $("#count").textContent = "Could not load properties"; $("#results").innerHTML = ""; }
+);
+window.addEventListener("beforeunload", () => { try { unsubListings(); } catch {} });

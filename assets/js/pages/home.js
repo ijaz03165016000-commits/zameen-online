@@ -1,5 +1,5 @@
-import { initPage, $, $$, ICON, propertyCard, cityOptions, typeOptions, hydrateThumbs } from "../app.js";
-import { getApprovedListings } from "../db.js?v=20261118_01";
+import { initPage, $, $$, ICON, propertyCard, cityOptions, typeOptions, hydrateThumbs } from "../app.js?v=20261118_02";
+import { subscribeApprovedListings } from "../db.js?v=20261118_02";
 import { SERVICE_CATEGORIES } from "../seed.js";
 
 initPage();
@@ -45,17 +45,18 @@ $("#city-grid").innerHTML = cities.map(([c, n, img, ajk]) =>
 $("#service-grid").innerHTML = SERVICE_CATEGORIES.map(s =>
   `<a class="service-card" href="services.html?category=${s.slug}"><span class="emoji">${s.emoji}</span>${s.name}</a>`).join("");
 
-// Featured listings
-(async () => {
-  try {
-    const all = await getApprovedListings();
+// Featured listings (real-time live updates as soon as admin approves an ad)
+const unsubFeatured = subscribeApprovedListings(
+  all => {
     let list = all.filter(l => l.featured);
     if (list.length < 6) list = [...list, ...all.filter(l => !l.featured)].slice(0, 6);
     $("#featured").innerHTML = list.length ? list.slice(0, 6).map(propertyCard).join("")
       : '<div class="empty" style="grid-column:1/-1"><b>No featured properties yet.</b>Be the first — <a href="post-ad.html" style="color:var(--primary);font-weight:700">post your property</a>.</div>';
     hydrateThumbs($("#featured"));
-  } catch (e) {
+  },
+  e => {
     console.error(e);
     $("#featured").innerHTML = '<div class="empty" style="grid-column:1/-1"><b>Could not load properties.</b>Please refresh the page.</div>';
   }
-})();
+);
+window.addEventListener("beforeunload", () => { try { unsubFeatured(); } catch {} });

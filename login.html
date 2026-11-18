@@ -44,8 +44,8 @@
   </div>
 </main>
 <script type="module">
-  import { initPage, $, $$ } from "./assets/js/app.js";
-  import { signIn, signUp, resetPassword } from "./assets/js/db.js?v=20261118_01";
+  import { initPage, $, $$ } from "./assets/js/app.js?v=20261118_02";
+  import { signIn, signUp, resetPassword } from "./assets/js/db.js?v=20261118_02";
   const p = new URLSearchParams(location.search);
   const next = p.get("next") || "dashboard.html";
   const safeNext = /^[a-z-]+\.html/.test(next) ? next : "dashboard.html";

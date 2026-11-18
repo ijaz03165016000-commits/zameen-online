@@ -2,7 +2,7 @@
 //  Shared layout (header, footer) and helpers
 // =========================================================
 import { SITE } from "./firebase-config.js";
-import { LIVE, ready, getUser, onAuth, signOut, getThumbs } from "./db.js?v=20261118_01";
+import { LIVE, ready, getUser, onAuth, signOut, getThumbs } from "./db.js?v=20261118_02";
 import { TYPES, CITIES, AJK_CITIES } from "./seed.js";
 
 export const $ = (s, el = document) => el.querySelector(s);
@@ -22,8 +22,16 @@ export function formatPrice(p, purpose) {
   return purpose === "rent" ? `${s}<small> /month</small>` : s;
 }
 export const timeAgo = ms => {
-  const d = Math.floor((Date.now() - ms) / 86400000);
-  if (d < 1) return "Today"; if (d === 1) return "Yesterday"; if (d < 30) return `${d} days ago`;
+  if (!ms || ms < 100000000000) return "Just now";
+  const diff = Date.now() - ms;
+  if (diff < 60000) return "Just now";
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(diff / 3600000);
+  if (hrs < 24) return `${hrs}h ago`;
+  const d = Math.floor(diff / 86400000);
+  if (d === 1) return "Yesterday";
+  if (d < 30) return `${d} days ago`;
   return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 };
 export const waLink = (num, text = "") => `https://wa.me/${String(num || SITE.whatsapp).replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
