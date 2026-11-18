@@ -1,5 +1,5 @@
 import { initPage, $, $$, ICON, propertyCard, cityOptions, typeOptions, hydrateThumbs } from "../app.js";
-import { getApprovedListings } from "../db.js";
+import { getApprovedListings } from "../db.js?v=20261118_01";
 import { SERVICE_CATEGORIES } from "../seed.js";
 
 initPage();

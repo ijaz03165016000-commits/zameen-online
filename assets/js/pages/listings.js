@@ -1,5 +1,5 @@
 import { initPage, $, $$, params, propertyCard, cityOptions, typeOptions, typeLabel, isAJK, hydrateThumbs } from "../app.js";
-import { getApprovedListings } from "../db.js";
+import { getApprovedListings } from "../db.js?v=20261118_01";
 import { COMMERCIAL_TYPES, AJK_CITIES } from "../seed.js";
 
 initPage();

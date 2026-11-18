@@ -1,5 +1,5 @@
 import { initPage, $, $$, esc, params, formatPrice, typeLabel, timeAgo, ICON, waLink, propertyCard, toast, favs, fallbackImg, isAJK, hydrateThumbs } from "../app.js";
-import { getListing, getApprovedListings, addView, addInquiry, getUser, getPhotos } from "../db.js";
+import { getListing, getApprovedListings, addView, addInquiry, getUser, getPhotos } from "../db.js?v=20261118_01";
 import { SITE } from "../firebase-config.js";
 
 await initPage();

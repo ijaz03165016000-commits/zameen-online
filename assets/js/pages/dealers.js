@@ -1,5 +1,5 @@
 import { initPage, $, esc, cityOptions, waLink, ICON } from "../app.js";
-import { getDealers } from "../db.js";
+import { getDealers } from "../db.js?v=20261118_01";
 
 initPage();
 $("#city").innerHTML = cityOptions(new URLSearchParams(location.search).get("city") || "");

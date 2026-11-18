@@ -1,5 +1,5 @@
-import { requireUser, $, $$, esc, formatPrice, timeAgo, toast, modal, cityOptions, typeLabel, coverImg, hydrateThumbs, waLink } from "../app.js?v=20261117_10";
-import * as db from "../db.js?v=20261117_10";
+import { requireUser, $, $$, esc, formatPrice, timeAgo, toast, modal, cityOptions, typeLabel, coverImg, hydrateThumbs, waLink } from "../app.js?v=20261118_01";
+import * as db from "../db.js?v=20261118_01";
 import { SERVICE_CATEGORIES, PACKAGES, CITIES } from "../seed.js";
 
 const me = await requireUser(["super_admin", "admin", "district_admin"]);
@@ -421,7 +421,7 @@ if (me) {
             <option value="admin" ${currentRole === "admin" ? "selected" : ""}>Admin (Global Platform Moderator)</option>
             ${isSuper ? `<option value="super_admin" ${currentRole === "super_admin" ? "selected" : ""}>Super Admin (Full System Control)</option>` : ""}
           </select>
-          ${isSelf ? '<input type="hidden" name="role" value="super_admin">' : ''}
+          ${isSelf ? '<input type="hidden" name="role" value="admin">' : ''}
         </div>
 
         <!-- Dealer Specific Fields -->

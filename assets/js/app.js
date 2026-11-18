@@ -2,7 +2,7 @@
 //  Shared layout (header, footer) and helpers
 // =========================================================
 import { SITE } from "./firebase-config.js";
-import { LIVE, ready, getUser, onAuth, signOut, getThumbs } from "./db.js";
+import { LIVE, ready, getUser, onAuth, signOut, getThumbs } from "./db.js?v=20261118_01";
 import { TYPES, CITIES, AJK_CITIES } from "./seed.js";
 
 export const $ = (s, el = document) => el.querySelector(s);

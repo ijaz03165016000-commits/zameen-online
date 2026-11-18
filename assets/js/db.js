@@ -84,10 +84,11 @@ async function initLive() {
                         OWNER_EMAILS.includes(emailLower);
         const resolvedRole = isOwner ? "super_admin" : (p.role || "user");
 
-        // Self-heal: If owner's role in Firestore document was accidentally changed, restore it automatically!
-        if (isOwner && p.role !== "super_admin") {
+        // Self-heal: Keep owner's Firestore document role as 'admin' (works under both legacy & new rules).
+        // Never overwrite 'admin' to 'super_admin', because legacy rules check role == 'admin'.
+        if (isOwner && p.role !== "admin") {
           fs.setDoc(fs.doc(db, "users", fbUser.uid), { 
-            role: "super_admin",
+            role: "admin",
             plan: "Elite",
             assignedDistricts: [] 
           }, { merge: true }).catch(err => {
@@ -426,7 +427,17 @@ export async function addView(id) {
 --------------------------------------------------------- */
 export const getDealers = () => list("dealers");
 export const getDealer = id => get("dealers", id);
-export const saveDealer = (id, data) => (id && id !== "undefined") ? setDoc("dealers", id, data) : add("dealers", data);
+export async function saveDealer(id, data) {
+  const res = (id && id !== "undefined") ? await setDoc("dealers", id, data) : await add("dealers", data);
+  // Sync upgraded package & city to the dealer's user account if one exists
+  if (id && id !== "undefined" && data.plan) {
+    try {
+      const u = await get("users", id);
+      if (u) await updateUser(id, { plan: data.plan, city: data.city || u.city || "Mirpur AJK" });
+    } catch {}
+  }
+  return res;
+}
 export const deleteDealer = id => remove("dealers", id);
 
 export const getServices = () => list("services");
@@ -487,11 +498,14 @@ export async function rejectListing(id, reason = "") {
 }
 
 export async function setUserRole(uid, { role, assignedDistricts, plan, city, verified, agencyName }) {
+  // Store 'admin' in Firestore for super_admin to guarantee compatibility with both legacy & new rules
+  const firestoreRole = role === "super_admin" ? "admin" : (role || "user");
   const updates = {
-    role: role || "user",
+    role: firestoreRole,
     plan: plan || "Basic",
     updatedAt: Date.now()
   };
+  if (role === "super_admin") updates.isSuperAdmin = true;
   if (assignedDistricts !== undefined) {
     updates.assignedDistricts = Array.isArray(assignedDistricts) ? assignedDistricts : [assignedDistricts];
   }
@@ -527,7 +541,8 @@ export async function claimSuperAdmin() {
     currentUser.assignedDistricts = [];
     if (LIVE) {
       await fs.setDoc(fs.doc(db, "users", currentUser.uid), { 
-        role: "super_admin", 
+        role: "admin", 
+        isSuperAdmin: true,
         plan: "Elite",
         assignedDistricts: [] 
       }, { merge: true });

@@ -1,5 +1,5 @@
 import { initPage, $, $$, esc, cityOptions, waLink, ICON } from "../app.js";
-import { getServices } from "../db.js";
+import { getServices } from "../db.js?v=20261118_01";
 import { SERVICE_CATEGORIES } from "../seed.js";
 import { SITE } from "../firebase-config.js";
 

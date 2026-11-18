@@ -1,5 +1,5 @@
 import { requireUser, $, $$, esc, formatPrice, timeAgo, toast, favs, propertyCard, waLink, coverImg, hydrateThumbs, cityOptions } from "../app.js";
-import { getMyListings, deleteListing, getMyInquiries, markInquiry, getApprovedListings, updateProfile, signOut, getDealer, saveDealer, resetPassword } from "../db.js";
+import { getMyListings, deleteListing, getMyInquiries, markInquiry, getApprovedListings, updateProfile, signOut, getDealer, saveDealer, resetPassword } from "../db.js?v=20261118_01";
 import { PACKAGES } from "../seed.js";
 
 const u = await requireUser();

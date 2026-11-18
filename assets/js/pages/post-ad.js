@@ -1,5 +1,5 @@
 import { requireUser, $, $$, esc, cityOptions, typeOptions, formatPrice, compressImage, toast } from "../app.js";
-import { createListing, updateListing, getListing, getPhotos, getMyListings, LIVE } from "../db.js";
+import { createListing, updateListing, getListing, getPhotos, getMyListings, LIVE } from "../db.js?v=20261118_01";
 import { PACKAGES } from "../seed.js";
 
 // Make a smaller copy of an image data URL (used for the thumbnail)
