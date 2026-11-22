@@ -34,10 +34,11 @@ service cloud.firestore {
         : '';
     }
 
-    // Exact owner email whitelist — never wildcard-match names/emails so
-    // private seller test accounts remain genuine private sellers.
+    // Exact owner email whitelist — strictly requires email verification
+    // so unverified signups cannot hijack administrative privileges.
     function isOwnerEmail() {
       return signedIn()
+        && request.auth.token.email_verified == true
         && request.auth.token.email is string
         && request.auth.token.email.lower() in [
           'ijaz03165016000@gmail.com',
