@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zameen Online — Facebook Reel & Video Ad Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=Noto+Nastaliq+Urdu:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1d4fbf;
+      --primary-dark: #0f2c73;
+      --accent: #e8522a;
+      --gold: #facc15;
+      --green: #10b981;
+      --dark: #0b1426;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #080f1d;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 15px 60px;
+    }
+    .header-bar {
+      text-align: center;
+      max-width: 800px;
+      margin-bottom: 25px;
+    }
+    .header-bar h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .header-bar p {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid #334155;
+    }
+    .workspace {
+      display: flex;
+      gap: 30px;
+      align-items: flex-start;
+      max-width: 1000px;
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    /* Phone / Canvas Container */
+    .phone-mockup {
+      width: 360px;
+      height: 640px;
+      position: relative;
+      border-radius: 40px;
+      background: #000;
+      box-shadow: 0 25px 60px -15px rgba(0,0,0,0.8), 0 0 0 10px #1e293b, 0 0 0 12px #334155;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    canvas#reelCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #0b1426;
+    }
+    .reel-overlay-controls {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .live-tag {
+      background: rgba(232, 82, 42, 0.9);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .timer-tag {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    /* Side Control Panel */
+    .controls-panel {
+      flex: 1;
+      min-width: 320px;
+      max-width: 480px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .panel-section {
+      margin-bottom: 22px;
+    }
+    .panel-section h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button.btn {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-weight: 700;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      flex: 1;
+    }
+    .btn-primary {
+      background: #1d4fbf;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #163da1;
+      transform: translateY(-1px);
+    }
+    .btn-record {
+      background: linear-gradient(135deg, #e8522a, #f59e0b);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(232, 82, 42, 0.35);
+    }
+    .btn-record:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+    .btn-record.recording {
+      background: #ef4444;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+    .btn-secondary {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover {
+      background: #334155;
+      color: #fff;
+    }
+
+    .ad-copy-box {
+      background: #090e1a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.6;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .copy-btn {
+      margin-top: 10px;
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .copy-btn:hover {
+      background: #25334a;
+    }
+
+    .scene-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .scene-pill {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #131c2e;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .scene-pill.active {
+      background: #1e2a44;
+      color: #38bdf8;
+      border-left-color: #38bdf8;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <div style="margin-bottom: 8px;"><span class="badge">Official Promotional Asset</span></div>
+    <h1>🏡 Zameen.online — Facebook Reel / Video Ad</h1>
+    <p>A high-energy, 9:16 vertical video ad built for Facebook Reels, Instagram Reels & TikTok. Play, preview, or click <strong>Record & Download Video</strong> to export an actual video file.</p>
+  </div>
+
+  <div class="workspace">
+    <!-- Phone Mockup Container -->
+    <div class="phone-mockup">
+      <div class="reel-overlay-controls">
+        <span class="live-tag">REEL AD</span>
+        <span class="timer-tag" id="timerDisplay">00:00 / 00:32</span>
+      </div>
+      <canvas id="reelCanvas" width="1080" height="1920"></canvas>
+    </div>
+
+    <!-- Controls & Ad Copy Panel -->
+    <div class="controls-panel">
+
+      <div class="panel-section">
+        <h3>🎨 High-Resolution Poster / Ad Graphic</h3>
+        <div style="background: #090e1a; border: 1px solid #1e293b; border-radius: 12px; padding: 10px; display: flex; align-items: center; gap: 15px;">
+          <img src="assets/img/facebook-reel-ad-cover.jpg" alt="Ad Poster Cover" style="width: 70px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid #334155;">
+          <div style="flex: 1;">
+            <div style="font-weight: 700; font-size: 13px; color: #f8fafc; margin-bottom: 4px;">Ultra-HD Ad Cover (9:16)</div>
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">Designed for Facebook Ads, Instagram Story & WhatsApp status.</div>
+            <a href="assets/img/facebook-reel-ad-cover.jpg" download="Zameen_Online_Ad_Graphic.jpg" class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px; text-decoration: none; display: inline-flex;">
+              💾 Download Graphic
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="panel-section">
+        <h3>🎬 Reel Playback & Export</h3>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnPlayPause">▶ Play Reel</button>
+          <button class="btn btn-secondary" id="btnRestart">↺ Replay</button>
+        </div>
+        <div style="margin-top: 10px;">
+          <button class="btn btn-record" id="btnRecord" style="width: 100%;">
+            ⏺ Record & Download Video File (.webm)
+          </button>
+        </div>
+        <div style="margin-top: 8px; font-size: 11px; color: #64748b; text-align: center;">
+          Runs in real-time. Audio chimes included. Recorded video is ready for Facebook Ads upload.
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>⏱ Storyboard Breakdown</h3>
+        <div class="scene-timeline">
+          <div class="scene-pill" id="pill-0"><span>0:00–0:05</span><span>Hook: AJK & Mirpur Property Search</span></div>
+          <div class="scene-pill" id="pill-1"><span>0:05–0:12</span><span>Reveal: Introducing Zameen.online</span></div>
+          <div class="scene-pill" id="pill-2"><span>0:12–0:19</span><span>Features: Verified Dealers & Direct WhatsApp</span></div>
+          <div class="scene-pill" id="pill-3"><span>0:19–0:25</span><span>Overseas Friendly: Mirpur & UK Community</span></div>
+          <div class="scene-pill" id="pill-4"><span>0:25–0:32</span><span>Final CTA: Visit Today & Post Free Ad</span></div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>📝 Ready-to-Post Facebook Ad Copy</h3>
+        <div class="ad-copy-box" id="adCopyText">🏡 AJK اور پاکستان میں گھر یا پلاٹ خریدنا اب ہوا آسان اور محفوظ! 🇵🇰🇬🇧
+
+اب پراپرٹی ڈیلرز کے چکر کاٹنے اور غیر تصدیق شدہ فیس بک پوسٹوں پر وقت ضائع کرنے کی ضرورت نہیں۔
+
+آج ہی وزٹ کریں پاکستان اور آزاد کشمیر کا اپنا تصدیق شدہ پراپرٹی پورٹل:
+👉 www.zameen.online
+
+✨ کیا خاص ہے؟
+✅ 100% Verified Local Dealers (Mirpur, Bhimber, Kotli & Pakistan)
+✅ No Hidden Brokerage — ڈیلر اور اونر سے ڈائریکٹ واٹس ایپ پر رابطہ
+✅ گھر بیٹھے تصدیق شدہ قیمتیں، HD تصاویر اور لوکیشن دیکھیں
+✅ برطانیہ اور اوورسیز پاکستانیوں کے لیے خصوصی اور محفوظ سہولت
+✅ اپنا گھر یا پلاٹ فروخت کے لیے 60 سیکنڈ میں مفت ایڈ لگائیں!
+
+📞 رابطہ و واٹس ایپ: +92 344 0807888
+🌐 پورٹل دیکھیں: https://www.zameen.online
+📍 اعجاز سافٹ ویئر ہاؤس، سیکٹر G1/3، میرپور آزاد کشمیر
+
+#ZameenOnline #MirpurProperty #AJKRealEstate #OverseasPakistanis #PlotsInMirpur #HousesInPakistan #MirpurAJK</div>
+        <button class="copy-btn" id="btnCopyAdText">📋 Copy Full Ad Caption to Clipboard</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('reelCanvas');
+    const ctx = canvas.getContext('2d');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const btnPlayPause = document.getElementById('btnPlayPause');
+    const btnRestart = document.getElementById('btnRestart');
+    const btnRecord = document.getElementById('btnRecord');
+    const btnCopyAdText = document.getElementById('btnCopyAdText');
+
+    const TOTAL_DURATION = 32; // seconds
+    let currentTime = 0;
+    let isPlaying = false;
+    let animFrame = null;
+    let lastTimestamp = 0;
+
+    // Audio synthesizer for ambient sound effects
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+    function playBeep(freq = 440, type = 'sine', duration = 0.15) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    // Colors
+    const C = {
+      primary: '#1d4fbf',
+      primaryDark: '#0a1a44',
+      accent: '#e8522a',
+      gold: '#facc15',
+      green: '#10b981',
+      bgDark: '#081124',
+      cardBg: '#0f1f3d'
+    };
+
+    // Scenes definitions
+    const scenes = [
+      { start: 0, end: 5.5, id: 0 },
+      { start: 5.5, end: 12.5, id: 1 },
+      { start: 12.5, end: 19.5, id: 2 },
+      { start: 19.5, end: 25.5, id: 3 },
+      { start: 25.5, end: 32.0, id: 4 }
+    ];
+
+    let lastSceneId = -1;
+
+    function renderScene(time) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Determine active scene
+      const activeScene = scenes.find(s => time >= s.start && time < s.end) || scenes[scenes.length - 1];
+      
+      if (activeScene.id !== lastSceneId) {
+        lastSceneId = activeScene.id;
+        playBeep(activeScene.id * 80 + 400, 'triangle', 0.2);
+        updateTimelinePills(activeScene.id);
+      }
+
+      // Dynamic Animated Gradient Background
+      const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      const shift = Math.sin(time * 0.8) * 0.1;
+      grad.addColorStop(0, '#060d1d');
+      grad.addColorStop(0.5 + shift, '#0c1b3a');
+      grad.addColorStop(1, '#050a14');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Floating ambient particles
+      drawAmbientParticles(time);
+
+      // Render based on scene
+      const sceneTime = time - activeScene.start;
+      const progress = sceneTime / (activeScene.end - activeScene.start);
+
+      switch (activeScene.id) {
+        case 0:
+          drawSceneHook(sceneTime, progress);
+          break;
+        case 1:
+          drawSceneReveal(sceneTime, progress);
+          break;
+        case 2:
+          drawSceneFeatures(sceneTime, progress);
+          break;
+        case 3:
+          drawSceneOverseas(sceneTime, progress);
+          break;
+        case 4:
+          drawSceneCTA(sceneTime, progress);
+          break;
+      }
+
+      // Global Top & Bottom Watermark / Safe Zone
+      drawWatermark();
+    }
+
+    function drawAmbientParticles(time) {
+      ctx.save();
+      for (let i = 0; i < 20; i++) {
+        const x = (Math.sin(i * 99 + time * 0.3) * 0.5 + 0.5) * canvas.width;
+        const y = ((i * 100 + time * 60) % canvas.height);
+        const radius = (Math.sin(i + time) + 2) * 2;
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(56, 189, 248, 0.18)' : 'rgba(232, 82, 42, 0.15)';
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawWatermark() {
+      // Top Brand Pill
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      roundRect(ctx, 340, 70, 400, 56, 28);
+      ctx.fill();
+
+      ctx.font = '700 24px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'center';
+      ctx.fillText('WWW.ZAMEEN.ONLINE', 540, 106);
+      ctx.restore();
+    }
+
+    /* SCENE 0: THE SCROLL-STOPPING HOOK (0:00 - 0:05) */
+    function drawSceneHook(t, p) {
+      const zoom = 1 + p * 0.05;
+      ctx.save();
+      ctx.translate(540, 960);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-540, -960);
+
+      // Warning / Attention pill
+      const pillAlpha = Math.min(1, t * 2.5);
+      ctx.fillStyle = `rgba(232, 82, 42, ${pillAlpha})`;
+      roundRect(ctx, 280, 420, 520, 64, 32);
+      ctx.fill();
+
+      ctx.font = '800 28px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡ STOP SCROLLING!', 540, 464);
+
+      // Main Hook Heading
+      ctx.font = '900 64px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('Looking for House or', 540, 590);
+      ctx.fillStyle = C.gold;
+      ctx.fillText('Plot in Mirpur & AJK?', 540, 675);
+
+      // Animated house card mockup
+      drawFloatingListingCard(540, 1040, p);
+
+      // Urdu hook badge
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 3;
+      roundRect(ctx, 160, 1420, 760, 130, 24);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = '700 36px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('Tired of fake ads and hidden brokers?', 540, 1475);
+      ctx.font = '600 26px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('Get verified listings directly from genuine sellers.', 540, 1515);
+
+      ctx.restore();
+    }
+
+    /* SCENE 1: THE REVEAL (0:05 - 0:12) */
+    function drawSceneReveal(t, p) {
+      ctx.save();
+      // Glowing orb background
+      const radGrad = ctx.createRadialGradient(540, 800, 50, 540, 800, 450);
+      radGrad.addColorStop(0, 'rgba(29, 79, 191, 0.4)');
+      radGrad.addColorStop(1, 'rgba(29, 79, 191, 0)');
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(540, 800, 450, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Big Title
+      ctx.font = '700 32px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.fillText('INTRODUCING', 540, 430);
+
+      // Main Brand Logo
+      ctx.font = '900 86px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('Zameen', 440, 540);
+      ctx.fillStyle = C.accent;
+      ctx.fillText('.online', 730, 540);
+
+      ctx.font = '700 32px "Plus Jakarta Sans"';
+      ctx.fillStyle = C.gold;
+      ctx.fillText('Azad Kashmir & Pakistan’s No. 1 Portal', 540, 615);
+
+      // Mockup of the Portal UI (Phone Frame)
+      drawPhoneScreenWithPortal(540, 1150, p);
+
+      ctx.restore();
+    }
+
+    /* SCENE 2: KEY FEATURES (0:12 - 0:19) */
+    function drawSceneFeatures(t, p) {
+      ctx.save();
+      ctx.font = '900 58px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('Why Choose', 540, 360);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('Zameen.online?', 540, 435);
+
+      const features = [
+        { icon: '🛡️', title: '100% Verified Local Dealers', sub: 'Mirpur, Bhimber, Kotli & beyond', color: '#10b981' },
+        { icon: '💬', title: 'Direct WhatsApp Contact', sub: 'Deal directly with owners & agents', color: '#25D366' },
+        { icon: '📸', title: 'Detailed Photos & Real Prices', sub: 'Exact prices in Lakhs & Crores', color: '#facc15' },
+        { icon: '⚡', title: 'Post Your Ad in 60 Seconds', sub: '100% Free ad submission for sellers', color: '#e8522a' }
+      ];
+
+      features.forEach((feat, i) => {
+        const y = 560 + i * 220;
+        const offset = Math.max(0, 1 - (t - i * 0.4) * 3);
+        const cardX = 540 + offset * 300;
+
+        ctx.fillStyle = 'rgba(15, 27, 54, 0.85)';
+        ctx.strokeStyle = '#1e3a6a';
+        ctx.lineWidth = 2.5;
+        roundRect(ctx, 100, y, 880, 180, 24);
+        ctx.fill();
+        ctx.stroke();
+
+        // Icon circle
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.arc(200, y + 90, 52, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = '50px "Plus Jakarta Sans"';
+        ctx.fillText(feat.icon, 200, y + 107);
+
+        // Text
+        ctx.textAlign = 'left';
+        ctx.font = '800 36px "Plus Jakarta Sans"';
+        ctx.fillStyle = feat.color;
+        ctx.fillText(feat.title, 280, y + 80);
+
+        ctx.font = '500 26px "Plus Jakarta Sans"';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(feat.sub, 280, y + 124);
+        ctx.textAlign = 'center';
+      });
+
+      ctx.restore();
+    }
+
+    /* SCENE 3: OVERSEAS PAKISTANIS SPECIAL FOCUS (0:19 - 0:25) */
+    function drawSceneOverseas(t, p) {
+      ctx.save();
+      // UK and PK Flags
+      ctx.font = '68px "Plus Jakarta Sans"';
+      ctx.textAlign = 'center';
+      ctx.fillText('🇬🇧 🤝 🇵🇰', 540, 420);
+
+      ctx.font = '800 32px "Plus Jakarta Sans"';
+      ctx.fillStyle = C.gold;
+      ctx.fillText('BUILT FOR OVERSEAS COMMUNITY', 540, 490);
+
+      ctx.font = '900 62px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('Buying from the UK?', 540, 580);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('We’ve Got You Covered.', 540, 660);
+
+      // Overseas Trust Card
+      ctx.fillStyle = 'rgba(15, 27, 54, 0.9)';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 3;
+      roundRect(ctx, 120, 780, 840, 680, 32);
+      ctx.fill();
+      ctx.stroke();
+
+      const points = [
+        '✔ Direct video walkthroughs & verified locations',
+        '✔ No family pressure or middleman fraud',
+        '✔ Genuine market valuation in Mirpur & AJK',
+        '✔ Dedicated WhatsApp support 7 days a week'
+      ];
+
+      ctx.textAlign = 'left';
+      points.forEach((pt, i) => {
+        ctx.font = '700 32px "Plus Jakarta Sans"';
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText(pt, 170, 880 + i * 140);
+      });
+
+      // Bottom reassurance
+      ctx.textAlign = 'center';
+      ctx.font = '800 32px "Plus Jakarta Sans"';
+      ctx.fillStyle = C.green;
+      ctx.fillText('🔒 Safe, Transparent, 100% Online', 540, 1560);
+
+      ctx.restore();
+    }
+
+    /* SCENE 4: FINAL CTA (0:25 - 0:32) */
+    function drawSceneCTA(t, p) {
+      ctx.save();
+      // Glowing background
+      const radGrad = ctx.createRadialGradient(540, 960, 50, 540, 960, 600);
+      radGrad.addColorStop(0, 'rgba(232, 82, 42, 0.25)');
+      radGrad.addColorStop(1, 'rgba(6, 13, 29, 0)');
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(540, 960, 600, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Heading
+      ctx.font = '800 36px "Plus Jakarta Sans"';
+      ctx.fillStyle = C.gold;
+      ctx.textAlign = 'center';
+      ctx.fillText('YOUR DREAM PROPERTY IS ONE CLICK AWAY', 540, 400);
+
+      ctx.font = '900 80px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('Visit Today!', 540, 500);
+
+      // Big Domain Pill
+      ctx.fillStyle = C.primary;
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 4;
+      roundRect(ctx, 120, 620, 840, 140, 30);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = '900 52px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('www.zameen.online', 540, 710);
+
+      // WhatsApp Big Card
+      ctx.fillStyle = '#1e293b';
+      roundRect(ctx, 160, 830, 760, 120, 24);
+      ctx.fill();
+
+      ctx.font = '700 36px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#22c55e';
+      ctx.fillText('💬 WhatsApp: +92 344 0807888', 540, 905);
+
+      // Services / Dealers CTA
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      roundRect(ctx, 160, 1010, 760, 240, 24);
+      ctx.fill();
+
+      ctx.font = '700 32px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText('Are you a Property Dealer or Owner?', 540, 1080);
+
+      ctx.font = '800 38px "Plus Jakarta Sans"';
+      ctx.fillStyle = C.accent;
+      ctx.fillText('POST YOUR AD FOR FREE', 540, 1150);
+
+      ctx.font = '500 26px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('Reach genuine buyers across Pakistan & UK', 540, 1205);
+
+      // Footer brand
+      ctx.font = '600 26px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('Powered by Ijaz Software House • Sector G1/3, Mirpur AJK', 540, 1620);
+
+      ctx.restore();
+    }
+
+    // Helper: Draw floating property card in Scene 0
+    function drawFloatingListingCard(cx, cy, p) {
+      const w = 780;
+      const h = 540;
+      const x = cx - w / 2;
+      const y = cy - h / 2 + Math.sin(p * 8) * 12;
+
+      ctx.save();
+      ctx.fillStyle = '#0f2244';
+      ctx.strokeStyle = '#254378';
+      ctx.lineWidth = 3;
+      roundRect(ctx, x, y, w, h, 28);
+      ctx.fill();
+      ctx.stroke();
+
+      // Mock property image banner
+      const imgH = 290;
+      const imgGrad = ctx.createLinearGradient(x, y, x + w, y + imgH);
+      imgGrad.addColorStop(0, '#1a365d');
+      imgGrad.addColorStop(1, '#2a4365');
+      ctx.fillStyle = imgGrad;
+      roundRectTop(ctx, x, y, w, imgH, 28);
+      ctx.fill();
+
+      // House Graphic inside card
+      ctx.font = '90px "Plus Jakarta Sans"';
+      ctx.textAlign = 'center';
+      ctx.fillText('🏡', cx, y + 170);
+
+      // Badges on image
+      ctx.fillStyle = C.accent;
+      roundRect(ctx, x + 30, y + 30, 150, 48, 12);
+      ctx.fill();
+      ctx.font = '800 20px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('FOR SALE', x + 105, y + 62);
+
+      ctx.fillStyle = C.gold;
+      roundRect(ctx, x + 200, y + 30, 160, 48, 12);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.fillText('★ FEATURED', x + 280, y + 62);
+
+      // Price & Details
+      ctx.textAlign = 'left';
+      ctx.font = '900 44px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('PKR 2.45 Crore', x + 40, y + 370);
+
+      ctx.font = '700 28px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('Luxury 1 Kanal House — Sector F/1, Mirpur AJK', x + 40, y + 420);
+
+      ctx.font = '600 24px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('🛏️ 5 Beds   🚿 6 Baths   📐 1 Kanal', x + 40, y + 475);
+
+      ctx.restore();
+    }
+
+    // Helper: Draw Phone Screen in Scene 1
+    function drawPhoneScreenWithPortal(cx, cy, p) {
+      const pw = 680;
+      const ph = 920;
+      const px = cx - pw / 2;
+      const py = cy - ph / 2;
+
+      ctx.save();
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      roundRect(ctx, px, py, pw, ph, 40);
+      ctx.fill();
+      ctx.stroke();
+
+      // Top Notch
+      ctx.fillStyle = '#020617';
+      roundRect(ctx, cx - 120, py, 240, 36, 18);
+      ctx.fill();
+
+      // Mockup Portal Navbar
+      ctx.fillStyle = '#1d4fbf';
+      roundRect(ctx, px + 24, py + 60, pw - 48, 80, 16);
+      ctx.fill();
+      ctx.font = '800 30px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'left';
+      ctx.fillText('Zameen.online', px + 50, py + 112);
+
+      // Search Bar inside Phone
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, px + 24, py + 160, pw - 48, 70, 16);
+      ctx.fill();
+      ctx.font = '600 22px "Plus Jakarta Sans"';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('🔍 Search Mirpur, Bhimber, Islamabad...', px + 50, py + 204);
+
+      // Mini cards inside phone
+      const cardTypes = [
+        { title: 'Sector G/3 House', price: 'Rs. 1.85 Cr', loc: 'Mirpur AJK' },
+        { title: 'Commercial Plot 10 Marla', price: 'Rs. 95 Lakh', loc: 'Bhimber Road' },
+        { title: 'Lake View Villa', price: 'Rs. 3.20 Cr', loc: 'Islamgarh, AJK' }
+      ];
+
+      cardTypes.forEach((c, idx) => {
+        const my = py + 250 + idx * 190;
+        ctx.fillStyle = '#1e293b';
+        roundRect(ctx, px + 24, my, pw - 48, 170, 20);
+        ctx.fill();
+
+        ctx.font = '800 28px "Plus Jakarta Sans"';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(c.title, px + 50, my + 50);
+
+        ctx.font = '700 24px "Plus Jakarta Sans"';
+        ctx.fillStyle = C.gold;
+        ctx.fillText(c.price, px + 50, my + 95);
+
+        ctx.font = '500 20px "Plus Jakarta Sans"';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('📍 ' + c.loc, px + 50, my + 135);
+      });
+
+      ctx.restore();
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function roundRectTop(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height);
+      ctx.lineTo(x, y + height);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function updateTimelinePills(activeId) {
+      for (let i = 0; i < 5; i++) {
+        const pill = document.getElementById('pill-' + i);
+        if (pill) {
+          pill.classList.toggle('active', i === activeId);
+        }
+      }
+    }
+
+    function updateTimer() {
+      const curM = Math.floor(currentTime / 60);
+      const curS = Math.floor(currentTime % 60);
+      const totM = Math.floor(TOTAL_DURATION / 60);
+      const totS = Math.floor(TOTAL_DURATION % 60);
+      timerDisplay.textContent = 
+        String(curM).padStart(2, '0') + ':' + String(curS).padStart(2, '0') + ' / ' +
+        String(totM).padStart(2, '0') + ':' + String(totS).padStart(2, '0');
+    }
+
+    function animate(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const delta = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+
+      if (isPlaying) {
+        currentTime += delta;
+        if (currentTime >= TOTAL_DURATION) {
+          currentTime = 0; // Loop or stop
+        }
+        updateTimer();
+      }
+
+      renderScene(currentTime);
+      animFrame = requestAnimationFrame(animate);
+    }
+
+    btnPlayPause.onclick = () => {
+      initAudio();
+      isPlaying = !isPlaying;
+      btnPlayPause.textContent = isPlaying ? '⏸ Pause Reel' : '▶ Play Reel';
+    };
+
+    btnRestart.onclick = () => {
+      currentTime = 0;
+      lastTimestamp = 0;
+      updateTimer();
+      renderScene(0);
+    };
+
+    // Video Recording Feature with HTML5 MediaRecorder
+    let mediaRecorder = null;
+    let recordedChunks = [];
+
+    btnRecord.onclick = async () => {
+      initAudio();
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        return;
+      }
+
+      // Reset to beginning
+      currentTime = 0;
+      isPlaying = true;
+      btnPlayPause.textContent = '⏸ Pause Reel';
+      btnRecord.textContent = '⏹ Recording in Progress... Click to Finish Early';
+      btnRecord.classList.add('recording');
+
+      const stream = canvas.captureStream(30); // 30 FPS
+      recordedChunks = [];
+      
+      const options = { mimeType: 'video/webm;codecs=vp9' };
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        mediaRecorder = new MediaRecorder(stream);
+      }
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        btnRecord.classList.remove('recording');
+        btnRecord.textContent = '⏺ Record & Download Video File (.webm)';
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Zameen_Online_Facebook_Reel_Ad.webm';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        alert('🎉 Your Reel Video has been generated and downloaded successfully! You can upload it straight to Facebook Ads or Reels.');
+      };
+
+      mediaRecorder.start();
+
+      // Automatically stop after 32 seconds
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+      }, (TOTAL_DURATION + 0.5) * 1000);
+    };
+
+    // Copy Facebook Ad Copy
+    btnCopyAdText.onclick = () => {
+      const text = document.getElementById('adCopyText').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        btnCopyAdText.textContent = '✅ Copied to Clipboard!';
+        setTimeout(() => {
+          btnCopyAdText.textContent = '📋 Copy Full Ad Caption to Clipboard';
+        }, 2500);
+      });
+    };
+
+    // Initial render
+    renderScene(0);
+    animFrame = requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
