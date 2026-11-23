@@ -69,31 +69,8 @@ export const ICON = {
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>'
 };
 
-// Official Zameen.online Custom Architectural & Digital Portal Emblem ('ZO' mark)
-export const logoIconSVG = `<svg viewBox="0 0 100 100" class="brand-emblem-svg" width="100%" height="100%">
-  <defs>
-    <linearGradient id="navMarkBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1e3a8a"/>
-      <stop offset="50%" stop-color="#1d4fbf"/>
-      <stop offset="100%" stop-color="#0a1838"/>
-    </linearGradient>
-    <linearGradient id="navOGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#facc15"/>
-      <stop offset="60%" stop-color="#e8522a"/>
-      <stop offset="100%" stop-color="#dc2626"/>
-    </linearGradient>
-  </defs>
-  <rect width="100" height="100" rx="24" fill="url(#navMarkBg)"/>
-  <rect x="2" y="2" width="96" height="96" rx="22" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-  <circle cx="56" cy="52" r="23" fill="none" stroke="url(#navOGrad)" stroke-width="7.5"/>
-  <circle cx="70" cy="36" r="3.5" fill="#facc15"/>
-  <path d="M22 30 L66 30 L54 41 L22 41 Z" fill="#ffffff"/>
-  <path d="M54 41 L34 65 L44 65 L64 41 Z" fill="#ffffff" opacity="0.92"/>
-  <path d="M30 65 L76 65 L76 76 L30 76 Z" fill="#ffffff"/>
-  <polygon points="44,18 50,26 38,26" fill="#facc15"/>
-</svg>`;
-
-const logoHTML = `<a href="index.html" class="logo" aria-label="${SITE.name} home"><span class="logo-icon">${logoIconSVG}</span><span><span class="z">Zameen</span><span class="o">.online</span></span></a>`;
+// Official Zameen.online Custom Architectural & Digital Portal Logo
+const logoHTML = `<a href="index.html" class="logo" aria-label="${SITE.name} home"><img src="assets/img/logo-mark.png" alt="Zameen.online Logo" class="brand-logo-mark"><span><span class="z">Zameen</span><span class="o">.online</span></span></a>`;
 
 /* ---------- Favourites (per browser) ---------- */
 export const favs = {

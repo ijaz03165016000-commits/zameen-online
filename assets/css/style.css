@@ -71,12 +71,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .header-inner { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 20px; }
 .logo { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 24px; letter-spacing: -.02em; text-decoration: none; }
-.logo-icon {
-  width: 46px; height: 46px; border-radius: 12px;
-  display: grid; place-items: center; flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(29, 79, 191, 0.25);
+.brand-logo-mark {
+  height: 46px; width: auto; max-width: 58px; object-fit: contain; flex-shrink: 0;
+  display: block; filter: drop-shadow(0 2px 5px rgba(16, 67, 150, 0.18));
 }
-.logo-icon svg { width: 46px; height: 46px; display: block; }
 .logo .z { color: var(--primary); font-weight: 900; letter-spacing: -0.03em; }
 .logo .o { color: var(--accent); font-weight: 800; }
 .main-nav { display: flex; align-items: center; gap: 4px; }
