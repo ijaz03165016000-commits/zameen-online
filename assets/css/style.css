@@ -70,14 +70,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,.04);
 }
 .header-inner { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 20px; }
-.logo { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 24px; letter-spacing: -.02em; }
+.logo { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 24px; letter-spacing: -.02em; text-decoration: none; }
 .logo-icon {
-  width: 46px; height: 46px; border-radius: 12px; background: var(--primary);
-  display: grid; place-items: center; color: #fff; flex-shrink: 0;
+  width: 46px; height: 46px; border-radius: 12px;
+  display: grid; place-items: center; flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(29, 79, 191, 0.25);
 }
-.logo-icon svg { width: 24px; height: 24px; }
-.logo .z { color: var(--primary); }
-.logo .o { color: var(--accent); }
+.logo-icon svg { width: 46px; height: 46px; display: block; }
+.logo .z { color: var(--primary); font-weight: 900; letter-spacing: -0.03em; }
+.logo .o { color: var(--accent); font-weight: 800; }
 .main-nav { display: flex; align-items: center; gap: 4px; }
 .main-nav a {
   padding: 8px 14px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; color: var(--text);
